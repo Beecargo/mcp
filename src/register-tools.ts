@@ -1,6 +1,7 @@
 import { McpServer } from "@modelcontextprotocol/sdk/server/mcp.js";
 import { z } from "zod";
 import { callBeecargoApi } from "./api-client.js";
+import { registerBootstrapAgent } from "./register-bootstrap.js";
 import { formatToolResult } from "./api-response.js";
 import type { InstructionMode } from "./instruction-mode.js";
 import { pollRemoteJob, runBeecargoUpload, uploadInputSchema } from "./upload-mcp.js";
@@ -20,7 +21,7 @@ type ToolContext = {
 const TOOL_CATALOG = [
   {
     name: "beecargo_register_agent",
-    summary: "Self-register bootstrap bc_* machine key (tight limits)",
+    summary: "Self-register and get an API key (tight limits)",
   },
   {
     name: "beecargo_claim_file",
@@ -62,11 +63,12 @@ const TOOL_CATALOG = [
   },
   {
     name: "beecargo_create_upload_delegation",
-    summary: "Mint short-lived direct-to-R2 upload delegation for agents",
+    summary:
+      "Advanced: create a short-lived upload for a worker that must not hold your API key. Prefer beecargo_upload.",
   },
   {
     name: "beecargo_create_checkout",
-    summary: "Mint Premium Stripe checkout (trial if eligible, else weekly)",
+    summary: "Create Premium Stripe checkout (trial if eligible, else weekly)",
   },
   { name: "beecargo_search_tools", summary: "Search available MCP tools" },
 ] as const;
@@ -84,6 +86,11 @@ export const GUEST_MCP_TOOL_NAMES = new Set<string>([
   "beecargo_upload_status",
   "beecargo_create_checkout",
   "beecargo_search_tools",
+]);
+
+/** Hidden from beecargo_search_tools unless the query mentions delegation. */
+const SEARCH_DEMOTE_UNLESS_DELEGAT = new Set<string>([
+  "beecargo_create_upload_delegation",
 ]);
 
 export type McpToolSet = "full" | "guest";
@@ -145,12 +152,18 @@ export function createBeecargoMcpServer(
     },
     async ({ query, limit }) => {
       const q = query.trim().toLowerCase();
+      const wantsDelegation = /delegat/i.test(q);
       const catalog =
         toolSet === "guest"
           ? TOOL_CATALOG.filter((t) => GUEST_MCP_TOOL_NAMES.has(t.name))
           : TOOL_CATALOG;
       const matches = catalog
-        .filter((t) => !q || t.name.includes(q) || t.summary.toLowerCase().includes(q))
+        .filter((t) => {
+          if (SEARCH_DEMOTE_UNLESS_DELEGAT.has(t.name) && !wantsDelegation) {
+            return false;
+          }
+          return !q || t.name.includes(q) || t.summary.toLowerCase().includes(q);
+        })
         .slice(0, limit);
       return {
         content: [
@@ -168,19 +181,14 @@ export function createBeecargoMcpServer(
     {
       title: "Register agent API key",
       description:
-        "Create a bootstrap bc_* machine key (files_write, free-tier quotas). No API key required. Rate-limited per IP. For production agents with 500GB included concurrent storage/1000rpm, mint via Pro dashboard POST /api-keys/agent. After success, this MCP session adopts the key.",
+        "Create an API key for agent file storage (free-tier quotas). No API key required beforehand. Solves a short proof-of-work and is rate-limited per IP. For production agents with 100GB included concurrent storage/1000rpm, create a Pro key via dashboard POST /api-keys/agent. After success, this MCP session adopts the key.",
       inputSchema: z.object({
         label: z.string().max(120).optional().describe("Optional key label"),
       }),
       annotations: { readOnlyHint: false },
     },
     async ({ label }) => {
-      const result = await callBeecargoApi({
-        apiKey: null,
-        method: "POST",
-        path: "/agent/register",
-        body: { label: label ?? "mcp-agent" },
-      });
+      const result = await registerBootstrapAgent(label ?? "mcp-agent");
       if (result.ok && result.body && typeof result.body === "object") {
         const key = (result.body as { key?: string }).key;
         if (key && ctx.setApiKey) {
@@ -199,7 +207,7 @@ export function createBeecargoMcpServer(
     {
       title: "Create Premium checkout link",
       description:
-        "Mint a Stripe Checkout URL for a human to subscribe to Premium. Default plan=recommended: trial if the signed-in human still has the intro offer, otherwise weekly. Agent/guest sessions always get weekly (trial needs a real signed-in account). Prefer recommended; use weekly/monthly/annual only if the human asks. No API key required for guest mint — do not send session bc_* for guest checkout. Send the returned url to the human. After pay + claim at /checkout/complete, mint Pro bc_* via dashboard POST /api-keys/agent.",
+        "Create a Stripe Checkout URL for a human to subscribe to Premium. Default plan=recommended: trial if the signed-in human still has the intro offer, otherwise weekly. Agent/guest sessions always get weekly (trial needs a real signed-in account). Prefer recommended; use weekly/monthly/annual only if the human asks. No API key required for guest checkout — do not send the session API key for guest checkout. Send the returned url to the human. After pay + claim at /checkout/complete, create a Pro API key via dashboard POST /api-keys/agent.",
       inputSchema: z.object({
         plan: z
           .enum(["recommended", "weekly", "monthly", "annual"])
@@ -354,7 +362,7 @@ export function createBeecargoMcpServer(
           .boolean()
           .optional()
           .describe(
-            "When true, mint a download unlock code and delivery link (returned once). When false, clear protection.",
+            "When true, create a download unlock code and delivery link (returned once). When false, clear protection.",
           ),
         handoffMessage: z
           .string()
@@ -638,9 +646,9 @@ export function createBeecargoMcpServer(
   registerTool(
     "beecargo_create_upload_delegation",
     {
-      title: "Create upload delegation",
+      title: "Create upload delegation (advanced)",
       description:
-        "Mint a short-lived direct-to-R2 upload for an owned/bootstrap/Pro API key. PUT bytes to uploadUrl, then POST completeUrl with delegationToken. No anonymous delegation.",
+        "Advanced only: create a short-lived uploadUrl + delegationToken so a worker can PUT bytes without holding your full API key. Prefer beecargo_upload for normal agent uploads (url, path on stdio, or small contentBase64). No anonymous delegation.",
       inputSchema: z.object({
         name: z.string().min(1).max(240),
         sizeBytes: z.number().int().positive(),

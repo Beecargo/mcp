@@ -37,6 +37,31 @@ async function main(): Promise<void> {
     }
   }
 
+  for (const path of ["/", "/mcp", "/mcp/guest"]) {
+    const brand = await fetch(`${origin}${path}`, {
+      headers: { Accept: "text/html,application/xhtml+xml" },
+    });
+    if (!brand.ok) {
+      throw new Error(`smoke: GET ${path} brand expected 200, got ${brand.status}`);
+    }
+    const ct = brand.headers.get("content-type") ?? "";
+    if (!ct.includes("text/plain")) {
+      throw new Error(`smoke: GET ${path} expected text/plain, got ${ct}`);
+    }
+    const body = await brand.text();
+    if (!body.includes("▲") || !body.includes("mcp.beecargo.net/mcp")) {
+      throw new Error(`smoke: GET ${path} missing MCP brand page content`);
+    }
+  }
+
+  const jsonProbe = await fetch(`${origin}/mcp`, {
+    headers: { Accept: "application/json" },
+  });
+  const jsonCt = jsonProbe.headers.get("content-type") ?? "";
+  if (jsonCt.includes("text/plain")) {
+    throw new Error("smoke: JSON Accept GET /mcp must not return brand text/plain");
+  }
+
   const transport = new StreamableHTTPClientTransport(new URL(`${origin}/mcp`));
 
   const client = new Client({ name: "beecargo-mcp-smoke", version: "0.0.1" });
@@ -78,7 +103,7 @@ async function main(): Promise<void> {
 
   const search = await client.callTool({
     name: "beecargo_search_tools",
-    arguments: { query: "upload", limit: 5 },
+    arguments: { query: "upload", limit: 10 },
   });
   const rawContent = search.content;
   const searchText = Array.isArray(rawContent)
@@ -90,6 +115,28 @@ async function main(): Promise<void> {
     : "";
   if (!searchText?.includes("beecargo_upload")) {
     throw new Error("beecargo_search_tools returned unexpected payload");
+  }
+  if (searchText.includes("beecargo_create_upload_delegation")) {
+    throw new Error(
+      "smoke: upload search should demote beecargo_create_upload_delegation",
+    );
+  }
+
+  const delegationSearch = await client.callTool({
+    name: "beecargo_search_tools",
+    arguments: { query: "delegation", limit: 5 },
+  });
+  const delegationText = Array.isArray(delegationSearch.content)
+    ? delegationSearch.content
+        .map((c: { type?: string; text?: string }) =>
+          c && typeof c === "object" && "text" in c ? String(c.text) : "",
+        )
+        .join("")
+    : "";
+  if (!delegationText.includes("beecargo_create_upload_delegation")) {
+    throw new Error(
+      "smoke: delegation search should surface beecargo_create_upload_delegation",
+    );
   }
 
   const guestClient = new Client({

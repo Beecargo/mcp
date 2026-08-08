@@ -148,7 +148,7 @@ export function upgradeLinesFromPayload(body: unknown): string[] | null {
   lines.push(
     `Upgrade: anonymous/free limits reached — send the human to Premium.`,
     `Call beecargo_create_checkout (default plan=recommended: trial if eligible else weekly) and send them the returned Stripe url.`,
-    `After they pay: claim at ${SITE_ORIGIN}/checkout/complete, then mint a Pro bc_* via dashboard POST /api-keys/agent.`,
+    `After they pay: claim at ${SITE_ORIGIN}/checkout/complete, then create a Pro API key via dashboard POST /api-keys/agent.`,
   );
   if (typeof details?.agentAdvice === "string" && details.agentAdvice) {
     lines.push(`Advice: ${details.agentAdvice}`);
@@ -171,7 +171,7 @@ export function checkoutLinesFromPayload(body: unknown): string[] | null {
   return [
     `Checkout: ${url}`,
     `Send this Stripe link to the human to subscribe to Premium.`,
-    `After payment they claim Premium at ${claimUrl}, then mint a Pro agent key in the dashboard (POST /api-keys/agent).`,
+    `After payment they claim Premium at ${claimUrl}, then create a Pro agent key in the dashboard (POST /api-keys/agent).`,
   ];
 }
 

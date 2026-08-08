@@ -1,8 +1,10 @@
+import { createHash } from "node:crypto";
 import { createReadStream } from "node:fs";
 import { open, stat } from "node:fs/promises";
 import path from "node:path";
 import { callBeecargoApi } from "./api-client.js";
 import { formatToolResult } from "./api-response.js";
+import { mapPool, multipartUploadConcurrency } from "./multipart-concurrency.js";
 
 export type LocalUploadProgress = {
   progress: number;
@@ -147,6 +149,26 @@ export async function uploadLocalFile(options: {
     };
   }
 
+  const partNumbers = Array.from(
+    { length: session.totalParts },
+    (_, index) => index + 1,
+  );
+  const handle = await open(resolved, "r");
+  let partDigests: Record<string, string>;
+  try {
+    partDigests = {};
+    for (const partNumber of partNumbers) {
+      const start = (partNumber - 1) * session.chunkSize;
+      const end = Math.min(start + session.chunkSize, fileSize);
+      const length = end - start;
+      const buf = Buffer.alloc(length);
+      await handle.read(buf, 0, length, start);
+      partDigests[String(partNumber)] = createHash("sha256").update(buf).digest("hex");
+    }
+  } finally {
+    await handle.close();
+  }
+
   const urlsRes = await callBeecargoApi({
     apiKey: options.apiKey,
     method: "POST",
@@ -155,6 +177,7 @@ export async function uploadLocalFile(options: {
       key: session.key,
       uploadId: session.uploadId,
       totalParts: session.totalParts,
+      partDigests,
       ...(session.uploadSessionToken
         ? { uploadSessionToken: session.uploadSessionToken }
         : {}),
@@ -166,28 +189,40 @@ export async function uploadLocalFile(options: {
 
   const urlPayload = unwrapData<{ urls?: Record<string, string> }>(urlsRes.body);
   const urls = urlPayload?.urls ?? {};
-  const parts: { partNumber: number; etag: string }[] = [];
+  let completedParts = 0;
 
-  for (let partNumber = 1; partNumber <= session.totalParts; partNumber++) {
-    const url = urls[String(partNumber)];
-    if (!url) {
-      return {
-        ok: false,
-        status: 0,
-        body: { error: `Missing URL for part ${partNumber}` },
-        text: `Missing URL for part ${partNumber}`,
-      };
-    }
-    const start = (partNumber - 1) * session.chunkSize;
-    const end = Math.min(start + session.chunkSize, fileSize);
-    await options.onProgress?.({
-      progress: partNumber - 1,
-      total: session.totalParts,
-      message: `Uploading part ${partNumber}/${session.totalParts}`,
-    });
-    const etag = await putPart(url, resolved, start, end);
-    parts.push({ partNumber, etag });
+  let parts: { partNumber: number; etag: string }[];
+  try {
+    parts = await mapPool(
+      partNumbers,
+      multipartUploadConcurrency(fileSize),
+      async (partNumber) => {
+        const url = urls[String(partNumber)];
+        if (!url) {
+          throw new Error(`Missing URL for part ${partNumber}`);
+        }
+        const start = (partNumber - 1) * session.chunkSize;
+        const end = Math.min(start + session.chunkSize, fileSize);
+        const etag = await putPart(url, resolved, start, end);
+        completedParts += 1;
+        await options.onProgress?.({
+          progress: completedParts,
+          total: session.totalParts,
+          message: `Uploaded part ${completedParts}/${session.totalParts}`,
+        });
+        return { partNumber, etag };
+      },
+    );
+  } catch (error) {
+    const message = error instanceof Error ? error.message : "Part upload failed";
+    return {
+      ok: false,
+      status: 0,
+      body: { error: message },
+      text: message,
+    };
   }
+  parts.sort((a, b) => a.partNumber - b.partNumber);
 
   await options.onProgress?.({
     progress: session.totalParts,

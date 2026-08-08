@@ -9,7 +9,7 @@ Portable marketplace packaging (Agent Plugins 1.0 + Cursor manifest) lives in [`
 Publish a durable share link with no human dashboard login:
 
 1. Add hosted MCP with **no headers**: `https://mcp.beecargo.net/mcp` (full tools; see [`examples/cursor-http.mcp.json`](examples/cursor-http.mcp.json)). If `/mcp` requires auth, use `https://mcp.beecargo.net/mcp/guest` for bootstrap-only tools.
-2. Call `beecargo_register_agent` → bootstrap `bc_*` (10GB / 100rpm; session adopts the key).
+2. Call `beecargo_register_agent` → solves a short PoW, returns bootstrap `bc_*` (10GB / 100rpm; session adopts the key).
 3. Call `beecargo_upload` with a public HTTPS `url` → hand off `https://beecargo.net/d/{shortId}` or tell humans to enter `{shortId}` at `https://beecargo.net/get`.
 4. Optional: `beecargo_update_share_settings` with `protect: true` (+ `handoffMessage`) → return `unlockCode` and `handoffUrl` (`/h/…`) on a private channel.
 
@@ -21,7 +21,7 @@ Skip registration for ephemeral uploads: `beecargo_upload` works anonymously (st
 
 | Tool                             | Auth                  | Description                                                                        |
 | -------------------------------- | --------------------- | ---------------------------------------------------------------------------------- |
-| `beecargo_register_agent`        | None                  | Self-mint bootstrap `bc_*` (rate-limited)                                          |
+| `beecargo_register_agent`        | None                  | Self-mint bootstrap `bc_*` (PoW + rate-limited)                                    |
 | `beecargo_upload`                | Optional              | URL, small base64, or local path (stdio)                                           |
 | `beecargo_upload_status`         | Optional              | Poll async URL upload jobs                                                         |
 | `beecargo_create_checkout`       | None                  | Mint Premium Stripe checkout (recommended: trial if eligible, else weekly)         |

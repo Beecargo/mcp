@@ -27,7 +27,9 @@ import {
   mcpRequireAuth,
   mcpSessionTtlMs,
   mcpTrustProxy,
+  mcpTrustedProxyHops,
 } from "./env-config.js";
+import { getMcpBrandText, printMcpConsoleBrand } from "./console-brand.js";
 import { createBeecargoMcpServer, type McpToolSet } from "./register-tools.js";
 import { extractOAuthAccessToken, extractSessionApiKey } from "./session-api-key.js";
 import { buildProtectedResourceMetadata } from "./oauth-metadata.js";
@@ -48,14 +50,35 @@ function bearerMatches(presented: string, tokens: string[]): boolean {
   return false;
 }
 
+function normalizeIp(raw: string): string | null {
+  const trimmed = raw.trim();
+  if (!trimmed || trimmed.toLowerCase() === "unknown") return null;
+  if (trimmed.startsWith("::ffff:")) return trimmed.slice("::ffff:".length);
+  return trimmed;
+}
+
+/** Prefer CF-Connecting-IP; else rightmost trusted XFF hop; else socket peer. */
 function clientIp(req: Request): string {
   if (mcpTrustProxy()) {
+    const cf = req.headers["cf-connecting-ip"];
+    if (typeof cf === "string") {
+      const normalized = normalizeIp(cf);
+      if (normalized) return normalized;
+    }
     const forwarded = req.headers["x-forwarded-for"];
     if (typeof forwarded === "string" && forwarded.length > 0) {
-      return forwarded.split(",")[0]?.trim() ?? "unknown";
+      const parts = forwarded
+        .split(",")
+        .map((part) => normalizeIp(part))
+        .filter((part): part is string => Boolean(part));
+      if (parts.length > 0) {
+        const hops = mcpTrustedProxyHops();
+        const index = Math.max(0, parts.length - hops);
+        return parts[index] ?? parts[parts.length - 1]!;
+      }
     }
   }
-  return req.socket.remoteAddress ?? "unknown";
+  return normalizeIp(req.socket.remoteAddress ?? "") ?? "unknown";
 }
 
 function checkMcpRateLimit(
@@ -166,6 +189,37 @@ function sessionIdFromRequest(req: Request): string | undefined {
   return Array.isArray(sessionHeader) ? sessionHeader[0] : sessionHeader;
 }
 
+/** Browser / curl human GETs — not Streamable HTTP SSE or session resumes. */
+function isHumanLandingGet(req: Request): boolean {
+  if (req.method !== "GET") return false;
+  if (sessionIdFromRequest(req)) return false;
+  if (req.headers["mcp-protocol-version"]) return false;
+  const accept = String(req.headers.accept ?? "");
+  if (accept.includes("text/event-stream")) return false;
+  if (accept.includes("application/json") && !accept.includes("text/html")) {
+    return false;
+  }
+  return true;
+}
+
+function sendMcpBrandPage(res: Response): void {
+  res.setHeader("Content-Type", "text/plain; charset=utf-8");
+  res.setHeader("Cache-Control", "public, max-age=300");
+  res.status(200).send(getMcpBrandText());
+}
+
+function maybeServeMcpLanding(
+  req: Request,
+  res: Response,
+  next: NextFunction,
+): void {
+  if (isHumanLandingGet(req)) {
+    sendMcpBrandPage(res);
+    return;
+  }
+  next();
+}
+
 export function createHttpApplication(): Express {
   const registry = new McpSessionRegistry(mcpMaxSessions(), mcpSessionTtlMs());
   registry.startPeriodicPrune();
@@ -208,6 +262,10 @@ export function createHttpApplication(): Express {
       retry_after_sec: rl.retryAfterSec,
     });
   }
+
+  app.get("/", (_req, res) => {
+    sendMcpBrandPage(res);
+  });
 
   app.get("/health", (_req, res) => {
     res.json({ ok: true, service: "beecargo-mcp" });
@@ -320,11 +378,23 @@ export function createHttpApplication(): Express {
   const handleGuestMcp = (req: Request, res: Response) => handleMcp(req, res, "guest");
 
   app.post("/mcp", rateLimitMiddleware, mcpAuthMiddleware, handleAuthenticatedMcp);
-  app.get("/mcp", rateLimitMiddleware, mcpAuthMiddleware, handleAuthenticatedMcp);
+  app.get(
+    "/mcp",
+    rateLimitMiddleware,
+    maybeServeMcpLanding,
+    mcpAuthMiddleware,
+    handleAuthenticatedMcp,
+  );
   app.delete("/mcp", rateLimitMiddleware, mcpAuthMiddleware, handleAuthenticatedMcp);
 
   app.post("/mcp/guest", rateLimitMiddleware, mcpGuestAuthMiddleware, handleGuestMcp);
-  app.get("/mcp/guest", rateLimitMiddleware, mcpGuestAuthMiddleware, handleGuestMcp);
+  app.get(
+    "/mcp/guest",
+    rateLimitMiddleware,
+    maybeServeMcpLanding,
+    mcpGuestAuthMiddleware,
+    handleGuestMcp,
+  );
   app.delete("/mcp/guest", rateLimitMiddleware, mcpGuestAuthMiddleware, handleGuestMcp);
 
   return app;
@@ -335,6 +405,7 @@ export async function startHttpServer(): Promise<void> {
   const port = mcpHttpPort();
   const host = mcpListenHost();
   app.listen(port, host, () => {
+    printMcpConsoleBrand();
     console.error(`[beecargo-mcp] HTTP listening on ${host}:${port}`);
   });
 }

@@ -85,6 +85,12 @@ export function mcpTrustProxy(): boolean {
   return process.env.BEECARGO_MCP_TRUST_PROXY === "true";
 }
 
+/** Rightmost X-Forwarded-For hops trusted as proxies when trust proxy is on. */
+export function mcpTrustedProxyHops(): number {
+  const n = Number(process.env.BEECARGO_MCP_TRUSTED_PROXY_HOPS ?? "1");
+  return Number.isFinite(n) && n >= 1 ? Math.floor(n) : 1;
+}
+
 export function mcpListenHost(): string {
   return process.env.BEECARGO_MCP_HOST?.trim() || "0.0.0.0";
 }
