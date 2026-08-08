@@ -52,10 +52,7 @@ async function putPart(
   return etag.replaceAll('"', "");
 }
 
-function appendPublishFields(
-  form: FormData,
-  publish?: Record<string, unknown>,
-): void {
+function appendPublishFields(form: FormData, publish?: Record<string, unknown>): void {
   if (!publish) return;
   for (const [key, value] of Object.entries(publish)) {
     if (value === undefined || value === null) continue;

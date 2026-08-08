@@ -66,7 +66,11 @@ function shareLineFromPayload(body: unknown): string | null {
 function nestedErrorRecord(body: unknown): Record<string, unknown> | null {
   if (!body || typeof body !== "object") return null;
   const record = body as Record<string, unknown>;
-  if (record.error && typeof record.error === "object" && !Array.isArray(record.error)) {
+  if (
+    record.error &&
+    typeof record.error === "object" &&
+    !Array.isArray(record.error)
+  ) {
     return record.error as Record<string, unknown>;
   }
   return null;
@@ -85,7 +89,8 @@ function nestedDetails(body: unknown): Record<string, unknown> | null {
 
 /** Build Premium conversion hints for quota / product-limit failures. */
 export function upgradeLinesFromPayload(body: unknown): string[] | null {
-  const flat = body && typeof body === "object" ? (body as Record<string, unknown>) : null;
+  const flat =
+    body && typeof body === "object" ? (body as Record<string, unknown>) : null;
   const nested = nestedErrorRecord(body);
   const details = nestedDetails(body);
   const message =

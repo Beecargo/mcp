@@ -30,7 +30,10 @@ export const looksLikeUpgradeEligibleError = (input: {
   if (typeof input.upgradeEligible === "boolean") {
     return input.upgradeEligible;
   }
-  if (typeof input.limitKind === "string" && UPGRADE_ELIGIBLE_LIMIT_KINDS.has(input.limitKind)) {
+  if (
+    typeof input.limitKind === "string" &&
+    UPGRADE_ELIGIBLE_LIMIT_KINDS.has(input.limitKind)
+  ) {
     return true;
   }
   const message =
