@@ -1,0 +1,51 @@
+{
+  "name": "@beecargo/mcp",
+  "version": "0.1.0",
+  "private": false,
+  "description": "Model Context Protocol server for the Beecargo file hosting API",
+  "type": "module",
+  "bin": {
+    "beecargo-mcp": "./dist/index.js",
+    "beecargo-mcp-http": "./dist/http-entry.js",
+    "beecargo": "./dist/cli.js"
+  },
+  "files": [
+    "dist",
+    "examples"
+  ],
+  "publishConfig": {
+    "access": "public"
+  },
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/Beecargo/mcp.git"
+  },
+  "homepage": "https://beecargo.net/docs/mcp/overview",
+  "license": "MIT",
+  "scripts": {
+    "build": "tsc",
+    "start": "node dist/index.js",
+    "start:http": "node dist/http-entry.js",
+    "dev": "tsx src/index.ts",
+    "dev:http": "BEECARGO_MCP_TRANSPORT=http tsx src/http-entry.ts",
+    "cli": "tsx src/cli.ts",
+    "typecheck": "tsc --noEmit && tsc -p tsconfig.scripts.json",
+    "smoke:http": "tsx scripts/smoke-http.ts",
+    "smoke:env": "tsx scripts/smoke-env-config.ts",
+    "smoke:api": "tsx scripts/smoke-api.ts"
+  },
+  "engines": {
+    "node": ">=20"
+  },
+  "dependencies": {
+    "@modelcontextprotocol/sdk": "^1.29.0",
+    "express": "^5.2.1",
+    "zod": "^4.4.3"
+  },
+  "devDependencies": {
+    "@types/express": "^5.0.6",
+    "@types/node": "^24.0.0",
+    "tsx": "^4.23.1",
+    "typescript": "^5.7.3"
+  }
+}

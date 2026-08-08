@@ -1,0 +1,10 @@
+{
+  "mcpServers": {
+    "beecargo": {
+      "url": "https://mcp.beecargo.net/mcp",
+      "headers": {
+        "x-beecargo-api-key": "YOUR_BC_KEY"
+      }
+    }
+  }
+}

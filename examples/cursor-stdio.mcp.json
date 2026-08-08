@@ -1,0 +1,12 @@
+{
+  "mcpServers": {
+    "beecargo": {
+      "command": "npx",
+      "args": ["-y", "@beecargo/mcp"],
+      "env": {
+        "BEECARGO_API_KEY": "YOUR_BC_KEY",
+        "BEECARGO_API_URL": "https://api.beecargo.net"
+      }
+    }
+  }
+}
