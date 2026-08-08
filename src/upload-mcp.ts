@@ -164,6 +164,7 @@ export async function runBeecargoUpload(args: {
         filePath,
         contentType: contentType ?? "application/octet-stream",
         folderId,
+        publish: publishBody,
         onProgress: args.onProgress,
       });
       return { ok: result.ok, text: result.text, isError: !result.ok };

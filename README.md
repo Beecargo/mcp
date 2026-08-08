@@ -8,7 +8,7 @@ Portable marketplace packaging (Agent Plugins 1.0 + Cursor manifest) lives in [`
 
 Publish a durable share link with no human dashboard login:
 
-1. Add hosted MCP with **no headers**: `https://mcp.beecargo.net/mcp/guest` (see [`examples/cursor-http.mcp.json`](examples/cursor-http.mcp.json)).
+1. Add hosted MCP with **no headers**: `https://mcp.beecargo.net/mcp` (full tools; see [`examples/cursor-http.mcp.json`](examples/cursor-http.mcp.json)). If `/mcp` requires auth, use `https://mcp.beecargo.net/mcp/guest` for bootstrap-only tools.
 2. Call `beecargo_register_agent` → bootstrap `bc_*` (10GB / 100rpm; session adopts the key).
 3. Call `beecargo_upload` with a public HTTPS `url` → hand off `https://beecargo.net/d/{shortId}` or tell humans to enter `{shortId}` at `https://beecargo.net/get`.
 4. Optional: `beecargo_update_share_settings` with `protect: true` (+ `handoffMessage`) → return `unlockCode` and `handoffUrl` (`/h/…`) on a private channel.
@@ -61,14 +61,16 @@ Env: see [`.env.example`](.env.example). Highlights:
 - `BEECARGO_MCP_BEARER_TOKEN`: optional shared transport secret when `REQUIRE_AUTH=true`
 - `BEECARGO_MERCHANT_OAUTH_ENABLED`: publish OAuth metadata (consent flow TBD)
 
-## CLI (upload TUI)
+## CLI (local scripts)
+
+Use the dedicated package [`@beecargo/cli`](../cli/README.md) (`npx @beecargo/cli`):
 
 ```bash
-cd apps/mcp && pnpm cli upload ./artifact.zip --key bc_…
-# or after build: beecargo upload ./artifact.zip
+npx @beecargo/cli upload ./artifact.zip --json
+npx @beecargo/cli remote https://example.com/file.bin --async --json
 ```
 
-Progress prints on stderr; share JSON/text on stdout. Anonymous uploads work without a key (1GB cap).
+From the monorepo: `pnpm cli upload ./artifact.zip`. Publish flags (`--ttl`, `--protect`, …) match MCP `beecargo_upload`.
 
 ```bash
 pnpm smoke:http   # MCP transport (no API)

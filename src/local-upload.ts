@@ -52,12 +52,24 @@ async function putPart(
   return etag.replaceAll('"', "");
 }
 
+function appendPublishFields(
+  form: FormData,
+  publish?: Record<string, unknown>,
+): void {
+  if (!publish) return;
+  for (const [key, value] of Object.entries(publish)) {
+    if (value === undefined || value === null) continue;
+    form.append(key, typeof value === "string" ? value : String(value));
+  }
+}
+
 /** Upload a local file via direct (<4MB) or multipart API; reports part progress. */
 export async function uploadLocalFile(options: {
   apiKey: string | null;
   filePath: string;
   contentType?: string;
   folderId?: string;
+  publish?: Record<string, unknown>;
   onProgress?: (p: LocalUploadProgress) => void | Promise<void>;
 }): Promise<{ ok: boolean; status: number; body: unknown; text: string }> {
   const resolved = path.resolve(options.filePath);
@@ -92,6 +104,7 @@ export async function uploadLocalFile(options: {
         fileName,
       );
       if (options.folderId) form.append("folderId", options.folderId);
+      appendPublishFields(form, options.publish);
       const result = await callBeecargoApi({
         apiKey: options.apiKey,
         method: "POST",
@@ -200,6 +213,7 @@ export async function uploadLocalFile(options: {
       ...(session.uploadSessionToken
         ? { uploadSessionToken: session.uploadSessionToken }
         : {}),
+      ...(options.publish ?? {}),
     },
   });
 
