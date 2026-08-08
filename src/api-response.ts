@@ -99,6 +99,39 @@ function nestedDetails(body: unknown): Record<string, unknown> | null {
   return null;
 }
 
+/** Guidance when machine download is blocked on the safety check. */
+export function scanRetryLinesFromPayload(body: unknown): string[] | null {
+  const flat =
+    body && typeof body === "object" ? (body as Record<string, unknown>) : null;
+  const nested = nestedErrorRecord(body);
+  const details = nestedDetails(body);
+  const errorCode =
+    (typeof nested?.errorCode === "string" ? nested.errorCode : null) ??
+    (typeof flat?.errorCode === "string" ? flat.errorCode : null) ??
+    (typeof details?.errorCode === "string" ? details.errorCode : null);
+  const scanPending =
+    details?.scanPending === true ||
+    flat?.scanPending === true ||
+    nested?.scanPending === true ||
+    errorCode === "SCAN_PENDING";
+  if (!scanPending) return null;
+
+  const retryAfter =
+    (typeof details?.retryAfterSeconds === "number"
+      ? details.retryAfterSeconds
+      : null) ??
+    (typeof flat?.retryAfterSeconds === "number"
+      ? flat.retryAfterSeconds
+      : null) ??
+    15;
+
+  return [
+    `Safety check: file is not downloadable yet (wait ~${retryAfter}s).`,
+    "Retry beecargo_get_download_url after that delay, or poll GET /files/share/{shortId} until scanStatus is clean.",
+    "Owners can also wait for webhook file.ready, then download.",
+  ];
+}
+
 /** Build Premium conversion hints for quota / product-limit failures. */
 export function upgradeLinesFromPayload(body: unknown): string[] | null {
   const flat =
@@ -192,6 +225,8 @@ export function formatToolResult(
     const checkout = checkoutLinesFromPayload(result.body);
     if (checkout) parts.push(checkout.join("\n"));
   } else {
+    const scanRetry = scanRetryLinesFromPayload(result.body);
+    if (scanRetry) parts.push(scanRetry.join("\n"));
     const upgrade = upgradeLinesFromPayload(result.body);
     if (upgrade) parts.push(upgrade.join("\n"));
   }

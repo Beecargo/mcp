@@ -483,7 +483,7 @@ export function createBeecargoMcpServer(
     {
       title: "Get download URL",
       description:
-        "Get a signed download URL for a file by fileId. If share meta or file_info reports unlockRequired, you must pass unlockCode, unlockToken, or handoffToken.",
+        "Get a signed download URL for a file by fileId. If share meta or file_info reports unlockRequired, you must pass unlockCode, unlockToken, or handoffToken. If the body includes scanPending / SCAN_PENDING, wait retryAfterSeconds (~15) and retry, or poll share meta until scanStatus is clean.",
       inputSchema: z.object({
         fileId: FILE_ID,
         unlockCode: z

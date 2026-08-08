@@ -39,6 +39,7 @@ export function buildServerInstructions(mode: InstructionMode = "stdio"): string
     "- Complete handoff: return https://beecargo.net/d/{shortId} to humans, or the bare shortId with https://beecargo.net/get for typed entry; use beecargo_get_download_url for machine fetch.",
     "- Protected shares: optional unlock code plus delivery link https://beecargo.net/h/{token} with optional message. Pass unlockCode, handoffToken, or unlockToken to grant/download. Hand off Handoff + Unlock privately; /d is address only.",
     "- Agent policy: if unlockRequired, do not call beecargo_get_download_url without unlock credentials.",
+    "- Safety check: machine downloads wait until scanStatus is clean. On scanPending / SCAN_PENDING, wait retryAfterSeconds (~15) and retry beecargo_get_download_url, or poll GET /files/share/{shortId}, or wait for webhook file.ready.",
     "- fileId values are short alphanumeric ids from upload responses (field `id` inside `data`), not UUIDs.",
     "- Read https://beecargo.net/llms.txt for limits and https://beecargo.net/docs/mcp/overview for setup.",
     "- Tool results wrap the API JSON as { ok, status, body } plus Share/fileId hints when present.",
