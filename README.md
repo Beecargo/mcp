@@ -13,7 +13,7 @@ Publish a durable share link with no human dashboard login:
 3. Call `beecargo_upload` with a public HTTPS `url` → hand off `https://beecargo.net/d/{shortId}` or tell humans to enter `{shortId}` at `https://beecargo.net/get`.
 4. Optional: `beecargo_update_share_settings` with `protect: true` (+ `handoffMessage`) → return `unlockCode` and `handoffUrl` (`/h/…`) on a private channel.
 
-For production agents (500GB included concurrent storage / 1000rpm / high remote/hr): mint a Pro-tier key via dashboard `POST /api-keys/agent` (Pro required) or operator `POST /agent/api-keys`.
+For production agents (100GB included concurrent storage / 1000rpm / high remote/hr): mint a Pro-tier key via dashboard `POST /api-keys/agent` (Pro required) or operator `POST /agent/api-keys`.
 
 Skip registration for ephemeral uploads: `beecargo_upload` works anonymously (stricter limits; save `deletionToken`).
 
@@ -33,9 +33,16 @@ Skip registration for ephemeral uploads: `beecargo_upload` works anonymously (st
 | `beecargo_get_download_url`      | None                  | Signed download URL (`unlockCode` / `unlockToken` / `handoffToken` when protected) |
 | `beecargo_file_info`             | Optional              | Metadata by short codes (`unlockRequired`)                                         |
 | `beecargo_list_files`            | Required              | List owned files (`includeFolders`)                                                |
+| `beecargo_run_artifacts`         | API key               | List files uploaded under the same `runId`                                         |
 | `beecargo_delete_file`           | Key or deletion token | Delete file                                                                        |
 
-Detailed guides: [upload](https://beecargo.net/docs/mcp/upload), [upload status](https://beecargo.net/docs/mcp/upload-status), [folders](https://beecargo.net/docs/mcp/folders), and [share settings](https://beecargo.net/docs/mcp/share-settings).
+### Advanced
+
+| Tool                                | Auth    | Description                                                                                                                                              |
+| ----------------------------------- | ------- | -------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `beecargo_create_upload_delegation` | API key | Mint a short-lived `uploadUrl` + `delegationToken` for a worker that must not hold `bc_*`. Prefer `beecargo_upload` for normal agent uploads. |
+
+Detailed guides: [upload](https://beecargo.net/docs/mcp/upload), [upload status](https://beecargo.net/docs/mcp/upload-status), [run artifacts](https://beecargo.net/docs/mcp/run-artifacts), [upload delegation](https://beecargo.net/docs/mcp/upload-delegation), [folders](https://beecargo.net/docs/mcp/folders), and [share settings](https://beecargo.net/docs/mcp/share-settings).
 
 ## Stdio (local)
 
@@ -59,15 +66,15 @@ Env: see [`.env.example`](.env.example). Highlights:
 - `BEECARGO_API_FETCH_TIMEOUT_MS`: raise for large sync remotes (default guidance: 300000)
 - `BEECARGO_MCP_REQUIRE_AUTH`: set `true` to require transport bearer or `bc_*` on `/mcp` (default: open bootstrap, rate-limited)
 - `BEECARGO_MCP_BEARER_TOKEN`: optional shared transport secret when `REQUIRE_AUTH=true`
-- `BEECARGO_MERCHANT_OAUTH_ENABLED`: publish OAuth metadata (consent flow TBD)
+- `BEECARGO_MERCHANT_OAUTH_ENABLED`: publish OAuth resource metadata and enable Connect with Beecargo (requires matching `INTERNAL_API_KEY` on API + MCP)
 
 ## CLI (local scripts)
 
-Use the dedicated package [`@beecargo/cli`](../cli/README.md) (`npx @beecargo/cli`):
+Use the dedicated package [`@beecargo/cli`](../cli/README.md):
 
 ```bash
-npx @beecargo/cli upload ./artifact.zip --json
-npx @beecargo/cli remote https://example.com/file.bin --async --json
+npx --yes github:Beecargo/cli upload ./artifact.zip --json
+npx --yes github:Beecargo/cli remote https://example.com/file.bin --async --json
 ```
 
 From the monorepo: `pnpm cli upload ./artifact.zip`. Publish flags (`--ttl`, `--protect`, …) match MCP `beecargo_upload`.
