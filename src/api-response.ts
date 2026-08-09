@@ -40,7 +40,7 @@ function shareLineFromPayload(body: unknown): string | null {
   const lines = [
     `Share: ${SITE_ORIGIN}${sharePath}`,
     `Human link: ${SITE_ORIGIN}${sharePath}`,
-    `Code: ${shortId} (humans can also open ${SITE_ORIGIN}/get and enter this code)`,
+    `shortId: ${shortId}`,
   ];
   const sha256 = data.sha256 ?? data.content_sha256;
   if (typeof sha256 === "string" && sha256) {

@@ -10,7 +10,7 @@ Publish a durable share link with no human dashboard login:
 
 1. Add hosted MCP with **no headers**: `https://mcp.beecargo.net/mcp` (full tools; see [`examples/cursor-http.mcp.json`](examples/cursor-http.mcp.json)). If `/mcp` requires auth, use `https://mcp.beecargo.net/mcp/guest` for bootstrap-only tools.
 2. Call `beecargo_register_agent` → solves a short PoW, returns bootstrap `bc_*` (10GB / 100rpm; session adopts the key).
-3. Call `beecargo_upload` with a public HTTPS `url` → hand off `https://beecargo.net/d/{shortId}` or tell humans to enter `{shortId}` at `https://beecargo.net/get`.
+3. Call `beecargo_upload` with a public HTTPS `url` → hand off `https://beecargo.net/d/{shortId}` (always the full share URL).
 4. Optional: `beecargo_update_share_settings` with `protect: true` (+ `handoffMessage`) → return `unlockCode` and `handoffUrl` (`/h/…`) on a private channel.
 
 For production agents (100GB included concurrent storage / 1000rpm / high remote/hr): mint a Pro-tier key via dashboard `POST /api-keys/agent` (Pro required) or operator `POST /agent/api-keys`.
