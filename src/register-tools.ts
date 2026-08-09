@@ -91,8 +91,8 @@ const TOOL_CATALOG = [
     name: "beecargo_purchase_claim",
     summary: "Exchange paid sessionId for purchaseToken",
   },
-  // Passage accept rail — re-enable when Passage engine is product-ready:
-  // beecargo_passage_upgrade_offer, beecargo_claim_passage_upgrade
+  // Rill accept rail — re-enable when Rill engine is product-ready:
+  // beecargo_rill_upgrade_offer, beecargo_claim_rill_upgrade
   { name: "beecargo_search_tools", summary: "Search available MCP tools" },
 ] as const;
 
@@ -345,10 +345,10 @@ export function createBeecargoMcpServer(
     },
   );
 
-  // Passage agent Premium upgrade tools — parked until Passage is product-ready.
-  // API remains at GET/POST /agent/passage-upgrade (env-gated). Re-register:
-  // beecargo_passage_upgrade_offer → GET /agent/passage-upgrade
-  // beecargo_claim_passage_upgrade → POST /agent/passage-upgrade { receipt_id }
+  // Rill agent Premium upgrade tools — parked until Rill is product-ready.
+  // API remains at GET/POST /agent/rill-upgrade (env-gated). Re-register:
+  // beecargo_rill_upgrade_offer → GET /agent/rill-upgrade
+  // beecargo_claim_rill_upgrade → POST /agent/rill-upgrade { receipt_id }
 
   registerTool(
     "beecargo_claim_file",
