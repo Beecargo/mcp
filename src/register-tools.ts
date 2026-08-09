@@ -54,7 +54,20 @@ const TOOL_CATALOG = [
   },
   {
     name: "beecargo_update_share_settings",
-    summary: "Set visibility, direct, retention, expiry on owned file",
+    summary:
+      "Set visibility, price, direct, retention, expiry on owned file",
+  },
+  {
+    name: "beecargo_connect_status",
+    summary: "Seller payout readiness (Stripe Connect status)",
+  },
+  {
+    name: "beecargo_connect_onboard",
+    summary: "Mint Stripe Connect onboarding URL for the seller",
+  },
+  {
+    name: "beecargo_connect_login_link",
+    summary: "Open Stripe Express dashboard login URL",
   },
   { name: "beecargo_delete_file", summary: "Delete by fileId + optional token" },
   {
@@ -74,6 +87,9 @@ const TOOL_CATALOG = [
   // beecargo_passage_upgrade_offer, beecargo_claim_passage_upgrade
   { name: "beecargo_search_tools", summary: "Search available MCP tools" },
 ] as const;
+
+const CONNECT_DASHBOARD_FALLBACK =
+  "https://beecargo.net/dashboard/settings?connect=start";
 
 const IDEMPOTENCY_KEY = z
   .string()
@@ -348,11 +364,144 @@ export function createBeecargoMcpServer(
   );
 
   registerTool(
+    "beecargo_connect_status",
+    {
+      title: "Seller payout status",
+      description:
+        "Check whether the signed-in seller can accept paid-share payments (Stripe Connect). Requires a dashboard API key or OAuth — not an agent bootstrap key. readyToSell must be true before setting priceCents.",
+      inputSchema: z.object({
+        sync: z
+          .boolean()
+          .optional()
+          .describe("Sync flags from Stripe (default true)"),
+      }),
+      annotations: { readOnlyHint: true },
+    },
+    async ({ sync }) => {
+      const apiKey = ctx.getApiKey();
+      if (!apiKey) {
+        return missingKeyResult(
+          "use a dashboard API key or OAuth (not an agent key)",
+        );
+      }
+      const qs =
+        sync === false ? "?sync=0" : sync === true ? "?sync=1" : "";
+      const result = await callBeecargoApi({
+        apiKey,
+        method: "GET",
+        path: `/connect/status${qs}`,
+      });
+      const extra =
+        result.status === 403 || result.status === 401
+          ? [
+              `Agent keys cannot manage payouts. Send the human to ${CONNECT_DASHBOARD_FALLBACK} while signed in.`,
+            ]
+          : undefined;
+      return {
+        content: [{ type: "text", text: formatToolResult(result, extra) }],
+        isError: !result.ok,
+      };
+    },
+  );
+
+  registerTool(
+    "beecargo_connect_onboard",
+    {
+      title: "Connect seller payouts",
+      description:
+        "Create a Stripe Express onboarding link for the seller. Send onboardUrl to the human. Requires a dashboard API key or OAuth — not an agent bootstrap key. After they finish, call beecargo_connect_status until readyToSell, then set priceCents via beecargo_update_share_settings.",
+      inputSchema: z.object({
+        country: z
+          .string()
+          .length(2)
+          .optional()
+          .describe("ISO country for new Express accounts (default US)"),
+      }),
+      annotations: { readOnlyHint: false },
+    },
+    async ({ country }) => {
+      const apiKey = ctx.getApiKey();
+      if (!apiKey) {
+        return {
+          content: [
+            {
+              type: "text",
+              text: [
+                "Missing dashboard API key or OAuth for seller payouts.",
+                `Send the human to ${CONNECT_DASHBOARD_FALLBACK} while signed in.`,
+              ].join("\n"),
+            },
+          ],
+          isError: true,
+        };
+      }
+      const result = await callBeecargoApi({
+        apiKey,
+        method: "POST",
+        path: "/connect/onboard",
+        body: country ? { country } : {},
+      });
+      if (!result.ok && (result.status === 403 || result.status === 401)) {
+        return {
+          content: [
+            {
+              type: "text",
+              text: formatToolResult(result, [
+                `Cannot mint onboarding from this key. Send the human to ${CONNECT_DASHBOARD_FALLBACK} while signed in.`,
+              ]),
+            },
+          ],
+          isError: true,
+        };
+      }
+      return {
+        content: [{ type: "text", text: formatToolResult(result) }],
+        isError: !result.ok,
+      };
+    },
+  );
+
+  registerTool(
+    "beecargo_connect_login_link",
+    {
+      title: "Open Stripe Express dashboard",
+      description:
+        "Mint a short-lived Stripe Express login URL so the seller can see payouts and bank details. Requires Connect already started and a dashboard API key or OAuth.",
+      inputSchema: z.object({}),
+      annotations: { readOnlyHint: true },
+    },
+    async () => {
+      const apiKey = ctx.getApiKey();
+      if (!apiKey) {
+        return missingKeyResult(
+          "use a dashboard API key or OAuth (not an agent key)",
+        );
+      }
+      const result = await callBeecargoApi({
+        apiKey,
+        method: "POST",
+        path: "/connect/login-link",
+        body: {},
+      });
+      const extra =
+        result.status === 403 || result.status === 401
+          ? [
+              `Agent keys cannot open Express. Send the human to ${CONNECT_DASHBOARD_FALLBACK} while signed in.`,
+            ]
+          : undefined;
+      return {
+        content: [{ type: "text", text: formatToolResult(result, extra) }],
+        isError: !result.ok,
+      };
+    },
+  );
+
+  registerTool(
     "beecargo_update_share_settings",
     {
       title: "Update share settings",
       description:
-        "Change visibility, direct download, retention, or unlock protection on an owned file or growable Shipment. Pass fileId and/or shortId (bundle shareShortId from openShare). Requires API key.",
+        "Change visibility, one-time price (priceCents), direct download, retention, or unlock protection on an owned file or growable Shipment. Pass fileId and/or shortId (bundle shareShortId from openShare). Setting a price requires seller Connect readyToSell (beecargo_connect_onboard first). Requires API key.",
       inputSchema: z.object({
         fileId: FILE_ID.optional(),
         shortId: z
@@ -364,6 +513,16 @@ export function createBeecargoMcpServer(
             "Shipment shortId (growable bundle from openShare, or one-file share code)",
           ),
         visibility: z.enum(["unlisted", "public"]).optional(),
+        priceCents: z
+          .number()
+          .int()
+          .min(0)
+          .max(99_999_999)
+          .nullable()
+          .optional()
+          .describe(
+            "One-time USD price in cents (min 100 = $1). Pass 0 or null to clear. Requires Connect readyToSell for a positive price.",
+          ),
         direct: z.boolean().optional().describe("Pro: auto-download on /d link"),
         retention: z.enum(["ttl", "forever"]).optional(),
         expiresAt: z.string().optional().describe("ISO expiry when retention is ttl"),
@@ -396,6 +555,7 @@ export function createBeecargoMcpServer(
       fileId,
       shortId,
       visibility,
+      priceCents,
       direct,
       retention,
       expiresAt,
@@ -427,6 +587,7 @@ export function createBeecargoMcpServer(
           ...(fileId ? { fileId } : {}),
           ...(shortId ? { shortId } : {}),
           visibility,
+          ...(priceCents !== undefined ? { priceCents } : {}),
           direct,
           retention,
           expiresAt,
@@ -438,8 +599,19 @@ export function createBeecargoMcpServer(
         },
         idempotencyKey,
       });
+      const extra =
+        !result.ok &&
+        typeof result.body === "object" &&
+        result.body &&
+        JSON.stringify(result.body).includes("Connect Stripe")
+          ? [
+              "Seller is not ready to sell. Call beecargo_connect_onboard and send onboardUrl to the human, or send them to " +
+                CONNECT_DASHBOARD_FALLBACK +
+                ".",
+            ]
+          : undefined;
       return {
-        content: [{ type: "text", text: formatToolResult(result) }],
+        content: [{ type: "text", text: formatToolResult(result, extra) }],
         isError: !result.ok,
       };
     },
@@ -511,7 +683,7 @@ export function createBeecargoMcpServer(
     {
       title: "Get download URL",
       description:
-        "Get a signed download URL for a file by fileId. If share meta or file_info reports unlockRequired, you must pass unlockCode, unlockToken, or handoffToken. If the body includes scanPending / SCAN_PENDING, wait retryAfterSeconds (~15) and retry, or poll share meta until scanStatus is clean.",
+        "Get a signed download URL for a file by fileId. If share meta or file_info reports unlockRequired, you must pass unlockCode, unlockToken, or handoffToken. Priced shares require purchaseToken (from the human /d/{shortId} pay + claim flow) or owner auth. If the body includes scanPending / SCAN_PENDING, wait retryAfterSeconds (~15) and retry, or poll share meta until scanStatus is clean.",
       inputSchema: z.object({
         fileId: FILE_ID,
         unlockCode: z
@@ -526,22 +698,41 @@ export function createBeecargoMcpServer(
           .string()
           .optional()
           .describe("Delivery link token from /h/… (alternative to unlockCode)"),
+        purchaseToken: z
+          .string()
+          .optional()
+          .describe(
+            "Required for priced shares after the human pays on /d/{shortId} (from POST /purchases/claim)",
+          ),
       }),
       annotations: { readOnlyHint: true },
     },
-    async ({ fileId, unlockCode, unlockToken, handoffToken }) => {
+    async ({
+      fileId,
+      unlockCode,
+      unlockToken,
+      handoffToken,
+      purchaseToken,
+    }) => {
       const params = new URLSearchParams();
       if (unlockToken) params.set("unlockToken", unlockToken);
       if (unlockCode) params.set("unlockCode", unlockCode);
       if (handoffToken) params.set("handoffToken", handoffToken);
+      if (purchaseToken) params.set("purchaseToken", purchaseToken);
       const qs = params.toString();
       const result = await callBeecargoApi({
-        apiKey: null,
+        apiKey: ctx.getApiKey(),
         method: "GET",
         path: `/files/download/${encodeURIComponent(fileId)}${qs ? `?${qs}` : ""}`,
       });
+      const extra =
+        result.status === 402
+          ? [
+              "Payment required. Send the human to the share page https://beecargo.net/d/{shortId} to pay, then retry with purchaseToken from POST /purchases/claim (or use owner auth).",
+            ]
+          : undefined;
       return {
-        content: [{ type: "text", text: formatToolResult(result) }],
+        content: [{ type: "text", text: formatToolResult(result, extra) }],
         isError: !result.ok,
       };
     },

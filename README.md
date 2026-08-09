@@ -27,10 +27,13 @@ Skip registration for ephemeral uploads: `beecargo_upload` works anonymously (st
 | `beecargo_create_checkout`       | None                  | Mint Premium Stripe checkout (recommended: 2-day trial then weekly)              |
 | `beecargo_claim_file`            | API key               | Claim anonymous upload with `claimToken`                                           |
 | `beecargo_search_tools`          | None                  | Keyword search over tools                                                          |
-| `beecargo_update_share_settings` | API key               | Visibility, direct, retention, `protect` / `handoffMessage` (`fileId` or `shortId`) |
+| `beecargo_update_share_settings` | API key               | Visibility, `priceCents`, direct, retention, `protect` / `handoffMessage` (`fileId` or `shortId`) |
+| `beecargo_connect_status`        | Dashboard key / OAuth | Seller Stripe Connect readiness (`readyToSell`)                                    |
+| `beecargo_connect_onboard`       | Dashboard key / OAuth | Mint Stripe Express onboarding URL (agent keys → dashboard deep link)              |
+| `beecargo_connect_login_link`    | Dashboard key / OAuth | Stripe Express dashboard login URL                                                 |
 | `beecargo_create_folder`         | API key               | Create folder                                                                      |
 | `beecargo_list_folders`          | API key               | List folders                                                                       |
-| `beecargo_get_download_url`      | None                  | Signed download URL (`unlockCode` / `unlockToken` / `handoffToken` when protected) |
+| `beecargo_get_download_url`      | None                  | Signed download URL (`unlockCode` / `unlockToken` / `handoffToken` / `purchaseToken` when needed) |
 | `beecargo_file_info`             | Optional              | Metadata by short codes (`unlockRequired`)                                         |
 | `beecargo_list_files`            | Required              | List owned files (`includeFolders`)                                                |
 | `beecargo_run_artifacts`         | API key               | List files uploaded under the same `runId`                                         |

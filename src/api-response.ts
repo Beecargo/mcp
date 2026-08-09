@@ -208,6 +208,31 @@ export function checkoutLinesFromPayload(body: unknown): string[] | null {
   ];
 }
 
+/** Extra human lines for Connect onboard / Express login responses. */
+export function connectLinkLinesFromPayload(body: unknown): string[] | null {
+  const data = unwrapApiData(body);
+  if (!data) return null;
+  const onboardUrl = data.onboardUrl;
+  if (typeof onboardUrl === "string" && onboardUrl.startsWith("http")) {
+    const ready = data.readyToSell === true;
+    return [
+      `Connect onboarding: ${onboardUrl}`,
+      `Send this Stripe link to the human to connect payouts.`,
+      ready
+        ? "Seller is already readyToSell — they can set priceCents on a share."
+        : "After they finish, call beecargo_connect_status until readyToSell, then set priceCents via beecargo_update_share_settings.",
+    ];
+  }
+  const loginUrl = data.loginUrl;
+  if (typeof loginUrl === "string" && loginUrl.startsWith("http")) {
+    return [
+      `Stripe Express: ${loginUrl}`,
+      `Send this link to the human to view payouts and bank details.`,
+    ];
+  }
+  return null;
+}
+
 export function formatToolResult(
   result: { ok: boolean; status: number; body: unknown },
   extraLines?: string[],
@@ -224,6 +249,8 @@ export function formatToolResult(
   if (result.ok) {
     const checkout = checkoutLinesFromPayload(result.body);
     if (checkout) parts.push(checkout.join("\n"));
+    const connect = connectLinkLinesFromPayload(result.body);
+    if (connect) parts.push(connect.join("\n"));
   } else {
     const scanRetry = scanRetryLinesFromPayload(result.body);
     if (scanRetry) parts.push(scanRetry.join("\n"));
