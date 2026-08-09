@@ -207,20 +207,20 @@ export function createBeecargoMcpServer(
     {
       title: "Create Premium checkout link",
       description:
-        "Create a Stripe Checkout URL for a human to subscribe to Premium. Default plan=recommended: trial if the signed-in human still has the intro offer, otherwise weekly. Agent/guest sessions always get weekly (trial needs a real signed-in account). Prefer recommended; use weekly/monthly/annual only if the human asks. No API key required for guest checkout — do not send the session API key for guest checkout. Send the returned url to the human. After pay + claim at /checkout/complete, create a Pro API key via dashboard POST /api-keys/agent.",
+        "Create a Stripe Checkout URL for a human to subscribe to Premium. Default plan=recommended: 2-day intro ($0.90) then weekly — for agent/guest sessions and for signed-in humans who still have the intro. Falls back to weekly when the intro was already used. Prefer recommended; use weekly/monthly/annual only if the human asks. No API key required for guest checkout — do not send the session API key for guest checkout. Send the returned url to the human. After pay + claim at /checkout/complete, create a Pro API key via dashboard POST /api-keys/agent.",
       inputSchema: z.object({
         plan: z
           .enum(["recommended", "weekly", "monthly", "annual"])
           .default("recommended")
           .describe(
-            "recommended = trial if eligible else weekly (default). weekly/monthly/annual only if the human asks.",
+            "recommended = 2-day trial then weekly when available, else weekly (default). weekly/monthly/annual only if the human asks.",
           ),
       }),
       annotations: { readOnlyHint: false },
     },
     async ({ plan }) => {
       // Guest mint must omit Bearer — agent bc_* machine emails cannot use logged-in checkout.
-      // recommended + no key → weekly (same product rule as dashboard when trial is unavailable).
+      // recommended + no key → trial (2 days → weekly) via guest checkout.
       const result = await callBeecargoApi({
         apiKey: null,
         method: "POST",

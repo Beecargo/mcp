@@ -24,7 +24,7 @@ Skip registration for ephemeral uploads: `beecargo_upload` works anonymously (st
 | `beecargo_register_agent`        | None                  | Self-mint bootstrap `bc_*` (PoW + rate-limited)                                    |
 | `beecargo_upload`                | Optional              | URL, small base64, or local path (stdio)                                           |
 | `beecargo_upload_status`         | Optional              | Poll async URL upload jobs                                                         |
-| `beecargo_create_checkout`       | None                  | Mint Premium Stripe checkout (recommended: trial if eligible, else weekly)         |
+| `beecargo_create_checkout`       | None                  | Mint Premium Stripe checkout (recommended: 2-day trial then weekly)              |
 | `beecargo_claim_file`            | API key               | Claim anonymous upload with `claimToken`                                           |
 | `beecargo_search_tools`          | None                  | Keyword search over tools                                                          |
 | `beecargo_update_share_settings` | API key               | Visibility, direct, retention, `protect` / `handoffMessage`                        |

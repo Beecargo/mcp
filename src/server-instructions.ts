@@ -31,7 +31,7 @@ export function buildServerInstructions(mode: InstructionMode = "stdio"): string
     "",
     "Premium conversion (when limits hit):",
     "- On storage/shipment/file-size/upload-budget errors, tell the human to upgrade to Premium.",
-    "- Call beecargo_create_checkout (default plan=recommended) and send them the Stripe url — trial if a signed-in human is still eligible, otherwise weekly. Agent/guest sessions get weekly.",
+    "- Call beecargo_create_checkout (default plan=recommended) and send them the Stripe url — 2-day trial then weekly when available, else weekly.",
     "- After they pay: claim at https://beecargo.net/checkout/complete, then create a Pro API key via dashboard POST /api-keys/agent and reconnect MCP with that key.",
     "- Do not send humans to /pricing for this flow. monthly/annual only if they explicitly ask.",
     "",
