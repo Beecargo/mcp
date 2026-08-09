@@ -38,7 +38,7 @@ export function buildServerInstructions(mode: InstructionMode = "stdio"): string
     "Paid shares (seller payouts):",
     "- Sellers must connect Stripe before setting a price: beecargo_connect_onboard (dashboard API key or OAuth) → send onboardUrl to the human.",
     "- Agent bootstrap keys cannot open Connect; fall back to https://beecargo.net/dashboard/settings?connect=start.",
-    "- When readyToSell, set priceCents (USD cents, min 100) via beecargo_update_share_settings.",
+    "- When readyToSell, set priceCents (min 100 in the smallest currency unit) and optional currency (usd/eur/aed/brl/jpy/krw/cny/rub; default usd) via beecargo_update_share_settings.",
     "",
     "Paid shares (buyer / machine download):",
     "- On paymentRequired / HTTP 402: beecargo_purchase_checkout (shortId or fileId) → send checkoutUrl to the human → beecargo_purchase_claim(sessionId) → beecargo_get_download_url with purchaseToken.",

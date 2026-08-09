@@ -243,17 +243,23 @@ export function createBeecargoMcpServer(
           .describe(
             "recommended = 2-day trial then weekly when available, else weekly (default). weekly/monthly/annual only if the human asks.",
           ),
+        locale: z
+          .enum(["en", "fr", "es", "de", "pt", "ar", "zh", "ja", "ko", "ru"])
+          .optional()
+          .describe(
+            "Human language preference — presents Checkout in that language and charges the matching currency (usd/eur/brl/aed/cny/jpy/krw/rub).",
+          ),
       }),
       annotations: { readOnlyHint: false },
     },
-    async ({ plan }) => {
+    async ({ plan, locale }) => {
       // Guest mint must omit Bearer — agent bc_* machine emails cannot use logged-in checkout.
       // recommended + no key → trial (2 days → weekly) via guest checkout.
       const result = await callBeecargoApi({
         apiKey: null,
         method: "POST",
         path: "/billing/checkout",
-        body: { plan },
+        body: { plan, ...(locale ? { locale } : {}) },
       });
       return {
         content: [{ type: "text", text: formatToolResult(result) }],
@@ -614,7 +620,13 @@ export function createBeecargoMcpServer(
           .nullable()
           .optional()
           .describe(
-            "One-time USD price in cents (min 100 = $1). Pass 0 or null to clear. Requires Connect readyToSell for a positive price.",
+            "One-time price in the smallest currency unit (min 100). Pass 0 or null to clear. Requires Connect readyToSell for a positive price. Pair with currency (default usd).",
+          ),
+        currency: z
+          .enum(["usd", "eur", "aed", "brl", "jpy", "krw", "cny", "rub"])
+          .optional()
+          .describe(
+            "Charge currency for priceCents (usd/eur/aed/brl/jpy/krw/cny/rub). Defaults to usd. JPY/KRW are whole units.",
           ),
         direct: z.boolean().optional().describe("Pro: auto-download on /d link"),
         retention: z.enum(["ttl", "forever"]).optional(),
@@ -649,6 +661,7 @@ export function createBeecargoMcpServer(
       shortId,
       visibility,
       priceCents,
+      currency,
       direct,
       retention,
       expiresAt,
@@ -681,6 +694,7 @@ export function createBeecargoMcpServer(
           ...(shortId ? { shortId } : {}),
           visibility,
           ...(priceCents !== undefined ? { priceCents } : {}),
+          ...(currency !== undefined ? { currency } : {}),
           direct,
           retention,
           expiresAt,

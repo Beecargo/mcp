@@ -29,7 +29,7 @@ Skip registration for ephemeral uploads: `beecargo_upload` works anonymously (st
 | `beecargo_purchase_claim`        | None                  | After pay: `sessionId` → `purchaseToken` for `beecargo_get_download_url`         |
 | `beecargo_claim_file`            | API key               | Claim anonymous upload with `claimToken`                                           |
 | `beecargo_search_tools`          | None                  | Keyword search over tools                                                          |
-| `beecargo_update_share_settings` | API key               | Visibility, `priceCents`, direct, retention, `protect` / `handoffMessage` (`fileId` or `shortId`) |
+| `beecargo_update_share_settings` | API key               | Visibility, `priceCents` / `currency`, direct, retention, `protect` / `handoffMessage` (`fileId` or `shortId`) |
 | `beecargo_connect_status`        | Dashboard key / OAuth | Seller Stripe Connect readiness (`readyToSell`)                                    |
 | `beecargo_connect_onboard`       | Dashboard key / OAuth | Mint Stripe Express onboarding URL (agent keys → dashboard deep link)              |
 | `beecargo_connect_login_link`    | Dashboard key / OAuth | Stripe Express dashboard login URL                                                 |
