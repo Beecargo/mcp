@@ -276,7 +276,7 @@ export function createBeecargoMcpServer(
     {
       title: "Upload a file",
       description:
-        "One upload tool: public url (sync or background job), contentBase64 (small), or path on stdio (auto multipart). Anonymous, free, and Pro limits match the API. Returns share link and fileId.",
+        "One upload tool: public url (sync or background job), contentBase64 (small), or path on stdio (auto multipart). Anonymous, free, and Pro limits match the API. Returns share link and fileId. For multi-file handoffs: openShare: true on the first file, then shareShortId on later uploads to grow the same /d link (one unlock).",
       inputSchema: uploadInputSchema(mode),
       annotations: { readOnlyHint: false },
     },
@@ -352,9 +352,17 @@ export function createBeecargoMcpServer(
     {
       title: "Update share settings",
       description:
-        "Change visibility, direct download, and retention on an owned file. Requires API key. Pro defaults to keeping files while subscribed; set expiresAt to any future ISO date within 90 days for automatic deletion.",
+        "Change visibility, direct download, retention, or unlock protection on an owned file or growable Shipment. Pass fileId and/or shortId (bundle shareShortId from openShare). Requires API key.",
       inputSchema: z.object({
-        fileId: FILE_ID,
+        fileId: FILE_ID.optional(),
+        shortId: z
+          .string()
+          .min(4)
+          .max(16)
+          .optional()
+          .describe(
+            "Shipment shortId (growable bundle from openShare, or one-file share code)",
+          ),
         visibility: z.enum(["unlisted", "public"]).optional(),
         direct: z.boolean().optional().describe("Pro: auto-download on /d link"),
         retention: z.enum(["ttl", "forever"]).optional(),
@@ -386,6 +394,7 @@ export function createBeecargoMcpServer(
     },
     async ({
       fileId,
+      shortId,
       visibility,
       direct,
       retention,
@@ -399,12 +408,24 @@ export function createBeecargoMcpServer(
     }) => {
       const apiKey = ctx.getApiKey();
       if (!apiKey) return missingKeyResult();
+      if (!fileId && !shortId) {
+        return {
+          content: [
+            {
+              type: "text",
+              text: "Pass fileId and/or shortId (Shipment share code).",
+            },
+          ],
+          isError: true,
+        };
+      }
       const result = await callBeecargoApi({
         apiKey,
         method: "PATCH",
         path: "/files/share-settings",
         body: {
-          fileId,
+          ...(fileId ? { fileId } : {}),
+          ...(shortId ? { shortId } : {}),
           visibility,
           direct,
           retention,

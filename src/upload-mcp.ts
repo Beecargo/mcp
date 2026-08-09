@@ -24,6 +24,8 @@ function publishFieldsFromInput(input: Record<string, unknown>) {
     "step",
     "intent",
     "consumer",
+    "openShare",
+    "shareShortId",
   ] as const;
   for (const key of keys) {
     if (input[key] !== undefined) fields[key] = input[key];
@@ -107,6 +109,8 @@ export async function runBeecargoUpload(args: {
     step?: string;
     intent?: string;
     consumer?: string;
+    openShare?: boolean;
+    shareShortId?: string;
   };
   onProgress?: (p: {
     progress: number;
@@ -315,6 +319,20 @@ export function uploadInputSchema(mode: InstructionMode) {
     step: z.string().optional(),
     intent: z.string().optional(),
     consumer: z.string().optional(),
+    openShare: z
+      .boolean()
+      .optional()
+      .describe(
+        "Open a growable multi-file Shipment for this upload (returns shareShortId). Use shareShortId on later uploads to add files to the same /d link.",
+      ),
+    shareShortId: z
+      .string()
+      .min(4)
+      .max(16)
+      .optional()
+      .describe(
+        "Attach this upload to an existing growable Shipment from a prior openShare upload. Same share URL; does not mint a new shortId.",
+      ),
   });
   if (mode === "stdio") {
     return base.extend({

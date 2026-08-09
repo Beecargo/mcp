@@ -10,8 +10,8 @@ Publish a durable share link with no human dashboard login:
 
 1. Add hosted MCP with **no headers**: `https://mcp.beecargo.net/mcp` (full tools; see [`examples/cursor-http.mcp.json`](examples/cursor-http.mcp.json)). If `/mcp` requires auth, use `https://mcp.beecargo.net/mcp/guest` for bootstrap-only tools.
 2. Call `beecargo_register_agent` → solves a short PoW, returns bootstrap `bc_*` (10GB / 100rpm; session adopts the key).
-3. Call `beecargo_upload` with a public HTTPS `url` → hand off `https://beecargo.net/d/{shortId}` (always the full share URL).
-4. Optional: `beecargo_update_share_settings` with `protect: true` (+ `handoffMessage`) → return `unlockCode` and `handoffUrl` (`/h/…`) on a private channel.
+3. Call `beecargo_upload` with a public HTTPS `url` → hand off `https://beecargo.net/d/{shortId}` (always the full share URL). Multi-file handoff: `openShare: true` on the first file, then `shareShortId` on later uploads (same link, one unlock).
+4. Optional: `beecargo_update_share_settings` with `protect: true` (+ `handoffMessage`) on `fileId` or Shipment `shortId` → return `unlockCode` and `handoffUrl` (`/h/…`) on a private channel.
 
 For production agents (100GB included concurrent storage / 1000rpm / high remote/hr): mint a Pro-tier key via dashboard `POST /api-keys/agent` (Pro required) or operator `POST /agent/api-keys`.
 
@@ -22,12 +22,12 @@ Skip registration for ephemeral uploads: `beecargo_upload` works anonymously (st
 | Tool                             | Auth                  | Description                                                                        |
 | -------------------------------- | --------------------- | ---------------------------------------------------------------------------------- |
 | `beecargo_register_agent`        | None                  | Self-mint bootstrap `bc_*` (PoW + rate-limited)                                    |
-| `beecargo_upload`                | Optional              | URL, small base64, or local path (stdio)                                           |
+| `beecargo_upload`                | Optional              | URL, small base64, or local path (stdio); `openShare` / `shareShortId` for growable multi-file shares |
 | `beecargo_upload_status`         | Optional              | Poll async URL upload jobs                                                         |
 | `beecargo_create_checkout`       | None                  | Mint Premium Stripe checkout (recommended: 2-day trial then weekly)              |
 | `beecargo_claim_file`            | API key               | Claim anonymous upload with `claimToken`                                           |
 | `beecargo_search_tools`          | None                  | Keyword search over tools                                                          |
-| `beecargo_update_share_settings` | API key               | Visibility, direct, retention, `protect` / `handoffMessage`                        |
+| `beecargo_update_share_settings` | API key               | Visibility, direct, retention, `protect` / `handoffMessage` (`fileId` or `shortId`) |
 | `beecargo_create_folder`         | API key               | Create folder                                                                      |
 | `beecargo_list_folders`          | API key               | List folders                                                                       |
 | `beecargo_get_download_url`      | None                  | Signed download URL (`unlockCode` / `unlockToken` / `handoffToken` when protected) |
