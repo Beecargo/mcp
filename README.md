@@ -80,9 +80,11 @@ Use the dedicated package [`@beecargo/cli`](../cli/README.md):
 ```bash
 npx --yes github:Beecargo/cli upload ./artifact.zip --json
 npx --yes github:Beecargo/cli remote https://example.com/file.bin --async --json
+npx --yes github:Beecargo/cli share FILE_ID --price-cents 500 --key YOUR_BC_KEY
+npx --yes github:Beecargo/cli download FILE_ID ./out.bin --purchase-token TOKEN
 ```
 
-From the monorepo: `pnpm cli upload ./artifact.zip`. Publish flags (`--ttl`, `--protect`, …) match MCP `beecargo_upload`.
+From the monorepo: `pnpm cli upload ./artifact.zip`. Publish flags (`--ttl`, `--protect`, …) match MCP `beecargo_upload`. `share --price-cents` / `download --purchase-token` match MCP share-settings and retrieve.
 
 ```bash
 pnpm smoke:http   # MCP transport (no API)
