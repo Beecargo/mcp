@@ -208,6 +208,51 @@ export function checkoutLinesFromPayload(body: unknown): string[] | null {
   ];
 }
 
+/** Extra human lines for paid-share purchase checkout. */
+export function purchaseCheckoutLinesFromPayload(
+  body: unknown,
+): string[] | null {
+  const data = unwrapApiData(body);
+  if (!data) return null;
+  const checkoutUrl = data.checkoutUrl;
+  if (typeof checkoutUrl !== "string" || !checkoutUrl.startsWith("http")) {
+    return null;
+  }
+  const sessionId =
+    typeof data.sessionId === "string" ? data.sessionId : null;
+  const shortId = typeof data.shortId === "string" ? data.shortId : null;
+  const lines = [
+    `Purchase checkout: ${checkoutUrl}`,
+    `Send this Stripe link to the human to pay for the share.`,
+  ];
+  if (sessionId) {
+    lines.push(
+      `Save sessionId=${sessionId} — after they pay, call beecargo_purchase_claim with it.`,
+    );
+  }
+  if (shortId) {
+    lines.push(`Share: ${SITE_ORIGIN}/d/${shortId}`);
+  }
+  return lines;
+}
+
+/** Extra human lines after claiming a paid-share purchase. */
+export function purchaseClaimLinesFromPayload(body: unknown): string[] | null {
+  const data = unwrapApiData(body);
+  if (!data) return null;
+  const purchaseToken = data.purchaseToken;
+  if (typeof purchaseToken !== "string" || !purchaseToken) return null;
+  const fileId = typeof data.fileId === "string" ? data.fileId : null;
+  const bundleId = typeof data.bundleId === "string" ? data.bundleId : null;
+  const lines = [
+    `purchaseToken: ${purchaseToken}`,
+    `Pass purchaseToken to beecargo_get_download_url (and unlock credentials if unlockRequired).`,
+  ];
+  if (fileId) lines.push(`fileId: ${fileId}`);
+  if (bundleId) lines.push(`bundleId: ${bundleId}`);
+  return lines;
+}
+
 /** Extra human lines for Connect onboard / Express login responses. */
 export function connectLinkLinesFromPayload(body: unknown): string[] | null {
   const data = unwrapApiData(body);
@@ -249,6 +294,10 @@ export function formatToolResult(
   if (result.ok) {
     const checkout = checkoutLinesFromPayload(result.body);
     if (checkout) parts.push(checkout.join("\n"));
+    const purchaseCheckout = purchaseCheckoutLinesFromPayload(result.body);
+    if (purchaseCheckout) parts.push(purchaseCheckout.join("\n"));
+    const purchaseClaim = purchaseClaimLinesFromPayload(result.body);
+    if (purchaseClaim) parts.push(purchaseClaim.join("\n"));
     const connect = connectLinkLinesFromPayload(result.body);
     if (connect) parts.push(connect.join("\n"));
   } else {

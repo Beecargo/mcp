@@ -83,6 +83,8 @@ async function main(): Promise<void> {
     "beecargo_update_share_settings",
     "beecargo_run_artifacts",
     "beecargo_create_checkout",
+    "beecargo_purchase_checkout",
+    "beecargo_purchase_claim",
   ];
   for (const name of fullRequired) {
     if (!listed.tools.some((t) => t.name === name)) {
@@ -153,6 +155,8 @@ async function main(): Promise<void> {
     "beecargo_upload",
     "beecargo_upload_status",
     "beecargo_create_checkout",
+    "beecargo_purchase_checkout",
+    "beecargo_purchase_claim",
   ].sort();
   const guestActual = guestListed.tools.map((tool) => tool.name).sort();
   if (JSON.stringify(guestActual) !== JSON.stringify(guestExpected)) {

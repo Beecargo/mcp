@@ -83,6 +83,14 @@ const TOOL_CATALOG = [
     name: "beecargo_create_checkout",
     summary: "Create Premium Stripe checkout (trial if eligible, else weekly)",
   },
+  {
+    name: "beecargo_purchase_checkout",
+    summary: "Mint pay link for a priced share (buyer)",
+  },
+  {
+    name: "beecargo_purchase_claim",
+    summary: "Exchange paid sessionId for purchaseToken",
+  },
   // Passage accept rail — re-enable when Passage engine is product-ready:
   // beecargo_passage_upgrade_offer, beecargo_claim_passage_upgrade
   { name: "beecargo_search_tools", summary: "Search available MCP tools" },
@@ -103,6 +111,8 @@ export const GUEST_MCP_TOOL_NAMES = new Set<string>([
   "beecargo_upload",
   "beecargo_upload_status",
   "beecargo_create_checkout",
+  "beecargo_purchase_checkout",
+  "beecargo_purchase_claim",
   "beecargo_search_tools",
 ]);
 
@@ -244,6 +254,89 @@ export function createBeecargoMcpServer(
         method: "POST",
         path: "/billing/checkout",
         body: { plan },
+      });
+      return {
+        content: [{ type: "text", text: formatToolResult(result) }],
+        isError: !result.ok,
+      };
+    },
+  );
+
+  registerTool(
+    "beecargo_purchase_checkout",
+    {
+      title: "Pay for a priced share",
+      description:
+        "Create a Stripe Checkout URL so a human can pay for a priced Beecargo share (one-time file/shipment purchase — not Premium). Pass shortId and/or fileId/bundleId. Send checkoutUrl to the human. After they pay, call beecargo_purchase_claim with sessionId, then beecargo_get_download_url with the returned purchaseToken. No API key required. Owners cannot buy their own share.",
+      inputSchema: z.object({
+        shortId: z
+          .string()
+          .min(4)
+          .max(16)
+          .optional()
+          .describe("Share shortId from /d/{shortId}"),
+        fileId: FILE_ID.optional().describe("Priced file id when known"),
+        bundleId: z
+          .string()
+          .min(8)
+          .max(64)
+          .optional()
+          .describe("Priced bundle/shipment id when known"),
+      }),
+      annotations: { readOnlyHint: false },
+    },
+    async ({ shortId, fileId, bundleId }) => {
+      if (!shortId && !fileId && !bundleId) {
+        return {
+          content: [
+            {
+              type: "text",
+              text: "Pass shortId and/or fileId or bundleId for the priced share.",
+            },
+          ],
+          isError: true,
+        };
+      }
+      const result = await callBeecargoApi({
+        // Optional key associates buyer_user_id; not required for guest pay.
+        apiKey: ctx.getApiKey(),
+        method: "POST",
+        path: "/purchases/checkout",
+        body: {
+          ...(shortId ? { shortId } : {}),
+          ...(fileId ? { fileId } : {}),
+          ...(bundleId ? { bundleId } : {}),
+        },
+      });
+      return {
+        content: [{ type: "text", text: formatToolResult(result) }],
+        isError: !result.ok,
+      };
+    },
+  );
+
+  registerTool(
+    "beecargo_purchase_claim",
+    {
+      title: "Claim purchase token after pay",
+      description:
+        "After a human pays via beecargo_purchase_checkout (or the /d/{shortId} pay flow), exchange the Stripe Checkout sessionId for a purchaseToken. Pass that token to beecargo_get_download_url. No API key required. sessionId is returned by purchase checkout and also appears as ?purchase= on the share success URL.",
+      inputSchema: z.object({
+        sessionId: z
+          .string()
+          .min(8)
+          .describe(
+            "Stripe Checkout session id (cs_…) from purchase checkout or ?purchase= on the share URL",
+          ),
+      }),
+      annotations: { readOnlyHint: false },
+    },
+    async ({ sessionId }) => {
+      const result = await callBeecargoApi({
+        apiKey: null,
+        method: "POST",
+        path: "/purchases/claim",
+        body: { sessionId },
       });
       return {
         content: [{ type: "text", text: formatToolResult(result) }],
@@ -728,7 +821,7 @@ export function createBeecargoMcpServer(
       const extra =
         result.status === 402
           ? [
-              "Payment required. Send the human to the share page https://beecargo.net/d/{shortId} to pay, then retry with purchaseToken from POST /purchases/claim (or use owner auth).",
+              "Payment required. Call beecargo_purchase_checkout with shortId/fileId, send checkoutUrl to the human, then beecargo_purchase_claim with sessionId, then retry this tool with purchaseToken. Or send them to https://beecargo.net/d/{shortId}. Owners can download with their API key.",
             ]
           : undefined;
       return {

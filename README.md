@@ -25,6 +25,8 @@ Skip registration for ephemeral uploads: `beecargo_upload` works anonymously (st
 | `beecargo_upload`                | Optional              | URL, small base64, or local path (stdio); `openShare` / `shareShortId` for growable multi-file shares |
 | `beecargo_upload_status`         | Optional              | Poll async URL upload jobs                                                         |
 | `beecargo_create_checkout`       | None                  | Mint Premium Stripe checkout (recommended: 2-day trial then weekly)              |
+| `beecargo_purchase_checkout`     | Optional              | Mint pay link for a priced share (`shortId` / `fileId` / `bundleId`)             |
+| `beecargo_purchase_claim`        | None                  | After pay: `sessionId` → `purchaseToken` for `beecargo_get_download_url`         |
 | `beecargo_claim_file`            | API key               | Claim anonymous upload with `claimToken`                                           |
 | `beecargo_search_tools`          | None                  | Keyword search over tools                                                          |
 | `beecargo_update_share_settings` | API key               | Visibility, `priceCents`, direct, retention, `protect` / `handoffMessage` (`fileId` or `shortId`) |
@@ -45,7 +47,7 @@ Skip registration for ephemeral uploads: `beecargo_upload` works anonymously (st
 | ----------------------------------- | ------- | -------------------------------------------------------------------------------------------------------------------------------------------------------- |
 | `beecargo_create_upload_delegation` | API key | Mint a short-lived `uploadUrl` + `delegationToken` for a worker that must not hold `bc_*`. Prefer `beecargo_upload` for normal agent uploads. |
 
-Detailed guides: [upload](https://beecargo.net/docs/mcp/upload), [upload status](https://beecargo.net/docs/mcp/upload-status), [run artifacts](https://beecargo.net/docs/mcp/run-artifacts), [upload delegation](https://beecargo.net/docs/mcp/upload-delegation), [folders](https://beecargo.net/docs/mcp/folders), and [share settings](https://beecargo.net/docs/mcp/share-settings).
+Detailed guides: [upload](https://beecargo.net/docs/mcp/upload), [upload status](https://beecargo.net/docs/mcp/upload-status), [run artifacts](https://beecargo.net/docs/mcp/run-artifacts), [upload delegation](https://beecargo.net/docs/mcp/upload-delegation), [folders](https://beecargo.net/docs/mcp/folders), [share settings](https://beecargo.net/docs/mcp/share-settings), [seller payouts](https://beecargo.net/docs/mcp/connect-payouts), and [buy a priced share](https://beecargo.net/docs/mcp/purchase).
 
 ## Stdio (local)
 
