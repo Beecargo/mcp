@@ -208,11 +208,7 @@ function sendMcpBrandPage(res: Response): void {
   res.status(200).send(getMcpBrandText());
 }
 
-function maybeServeMcpLanding(
-  req: Request,
-  res: Response,
-  next: NextFunction,
-): void {
+function maybeServeMcpLanding(req: Request, res: Response, next: NextFunction): void {
   if (isHumanLandingGet(req)) {
     sendMcpBrandPage(res);
     return;

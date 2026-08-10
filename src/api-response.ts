@@ -6,10 +6,7 @@ const SITE_ORIGIN = "https://beecargo.net";
 function formatBytes(bytes: number): string {
   if (!Number.isFinite(bytes) || bytes <= 0) return "0 B";
   const units = ["B", "KB", "MB", "GB", "TB"] as const;
-  const i = Math.min(
-    units.length - 1,
-    Math.floor(Math.log(bytes) / Math.log(1024)),
-  );
+  const i = Math.min(units.length - 1, Math.floor(Math.log(bytes) / Math.log(1024)));
   const value = bytes / 1024 ** i;
   return `${value.toFixed(value >= 10 || i === 0 ? 0 : 1)} ${units[i]}`;
 }
@@ -120,9 +117,7 @@ export function scanRetryLinesFromPayload(body: unknown): string[] | null {
     (typeof details?.retryAfterSeconds === "number"
       ? details.retryAfterSeconds
       : null) ??
-    (typeof flat?.retryAfterSeconds === "number"
-      ? flat.retryAfterSeconds
-      : null) ??
+    (typeof flat?.retryAfterSeconds === "number" ? flat.retryAfterSeconds : null) ??
     15;
 
   return [
@@ -174,9 +169,7 @@ export function upgradeLinesFromPayload(body: unknown): string[] | null {
         ? flat.limitBytes
         : null;
   if (typeof limitBytes === "number" && Number.isFinite(limitBytes)) {
-    lines.push(
-      `Max file size for this key/account: ${formatBytes(limitBytes)}`,
-    );
+    lines.push(`Max file size for this key/account: ${formatBytes(limitBytes)}`);
   }
   lines.push(
     `Upgrade: anonymous/free limits reached — send the human to Premium.`,
@@ -209,17 +202,14 @@ export function checkoutLinesFromPayload(body: unknown): string[] | null {
 }
 
 /** Extra human lines for paid-share purchase checkout. */
-export function purchaseCheckoutLinesFromPayload(
-  body: unknown,
-): string[] | null {
+export function purchaseCheckoutLinesFromPayload(body: unknown): string[] | null {
   const data = unwrapApiData(body);
   if (!data) return null;
   const checkoutUrl = data.checkoutUrl;
   if (typeof checkoutUrl !== "string" || !checkoutUrl.startsWith("http")) {
     return null;
   }
-  const sessionId =
-    typeof data.sessionId === "string" ? data.sessionId : null;
+  const sessionId = typeof data.sessionId === "string" ? data.sessionId : null;
   const shortId = typeof data.shortId === "string" ? data.shortId : null;
   const lines = [
     `Purchase checkout: ${checkoutUrl}`,

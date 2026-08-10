@@ -25,9 +25,7 @@ export function solveAgentRegisterPow(
   const maxAttempts = options?.maxAttempts ?? 50_000_000;
   for (let i = 0; i < maxAttempts; i += 1) {
     const nonce = i.toString(36);
-    const digest = createHash("sha256")
-      .update(`${challengeId}:${nonce}`)
-      .digest();
+    const digest = createHash("sha256").update(`${challengeId}:${nonce}`).digest();
     if (countLeadingZeroBits(digest) >= target) return nonce;
   }
   throw new Error("Failed to solve agent register proof-of-work");

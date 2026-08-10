@@ -54,8 +54,7 @@ const TOOL_CATALOG = [
   },
   {
     name: "beecargo_update_share_settings",
-    summary:
-      "Set visibility, price, direct, retention, expiry on owned file",
+    summary: "Set visibility, price, direct, retention, expiry on owned file",
   },
   {
     name: "beecargo_connect_status",
@@ -469,22 +468,16 @@ export function createBeecargoMcpServer(
       description:
         "Check whether the signed-in seller can accept paid-share payments (Stripe Connect). Requires a dashboard API key or OAuth — not an agent bootstrap key. readyToSell must be true before setting priceCents.",
       inputSchema: z.object({
-        sync: z
-          .boolean()
-          .optional()
-          .describe("Sync flags from Stripe (default true)"),
+        sync: z.boolean().optional().describe("Sync flags from Stripe (default true)"),
       }),
       annotations: { readOnlyHint: true },
     },
     async ({ sync }) => {
       const apiKey = ctx.getApiKey();
       if (!apiKey) {
-        return missingKeyResult(
-          "use a dashboard API key or OAuth (not an agent key)",
-        );
+        return missingKeyResult("use a dashboard API key or OAuth (not an agent key)");
       }
-      const qs =
-        sync === false ? "?sync=0" : sync === true ? "?sync=1" : "";
+      const qs = sync === false ? "?sync=0" : sync === true ? "?sync=1" : "";
       const result = await callBeecargoApi({
         apiKey,
         method: "GET",
@@ -572,9 +565,7 @@ export function createBeecargoMcpServer(
     async () => {
       const apiKey = ctx.getApiKey();
       if (!apiKey) {
-        return missingKeyResult(
-          "use a dashboard API key or OAuth (not an agent key)",
-        );
+        return missingKeyResult("use a dashboard API key or OAuth (not an agent key)");
       }
       const result = await callBeecargoApi({
         apiKey,
@@ -814,13 +805,7 @@ export function createBeecargoMcpServer(
       }),
       annotations: { readOnlyHint: true },
     },
-    async ({
-      fileId,
-      unlockCode,
-      unlockToken,
-      handoffToken,
-      purchaseToken,
-    }) => {
+    async ({ fileId, unlockCode, unlockToken, handoffToken, purchaseToken }) => {
       const params = new URLSearchParams();
       if (unlockToken) params.set("unlockToken", unlockToken);
       if (unlockCode) params.set("unlockCode", unlockCode);

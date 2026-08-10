@@ -47,10 +47,7 @@ export async function registerBootstrapAgent(label: string): Promise<{
       challenge_id?: string;
       difficulty?: number;
     };
-    if (
-      !challengeBody.challenge_id ||
-      typeof challengeBody.difficulty !== "number"
-    ) {
+    if (!challengeBody.challenge_id || typeof challengeBody.difficulty !== "number") {
       last = {
         ok: false,
         status: challenge.status,
