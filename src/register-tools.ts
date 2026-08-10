@@ -487,61 +487,41 @@ export function createBeecargoMcpServer(
         return missingKeyResult("use a dashboard API key or OAuth (not an agent key)");
       }
 
-      if (action === "status") {
-        const qs = sync === false ? "?sync=0" : sync === true ? "?sync=1" : "";
-        const result = await callBeecargoApi({
-          apiKey,
-          method: "GET",
-          path: `/connect/status${qs}`,
-        });
-        const extra =
-          result.status === 403 || result.status === 401
-            ? [
-                `Agent keys cannot manage payouts. Send the human to ${CONNECT_DASHBOARD_FALLBACK} while signed in.`,
-              ]
-            : undefined;
-        return {
-          content: [{ type: "text", text: formatToolResult(result, extra) }],
-          isError: !result.ok,
-        };
-      }
-
-      if (action === "onboard") {
-        const result = await callBeecargoApi({
-          apiKey,
-          method: "POST",
-          path: "/connect/onboard",
-          body: country ? { country } : {},
-        });
-        if (!result.ok && (result.status === 403 || result.status === 401)) {
-          return {
-            content: [
-              {
-                type: "text",
-                text: formatToolResult(result, [
-                  `Cannot mint onboarding from this key. Send the human to ${CONNECT_DASHBOARD_FALLBACK} while signed in.`,
-                ]),
-              },
-            ],
-            isError: true,
-          };
-        }
-        return {
-          content: [{ type: "text", text: formatToolResult(result) }],
-          isError: !result.ok,
-        };
-      }
+      const body: {
+        action: "status" | "onboard" | "login";
+        sync?: boolean;
+        country?: string;
+      } = { action };
+      if (action === "status" && sync !== undefined) body.sync = sync;
+      if (action === "onboard" && country) body.country = country;
 
       const result = await callBeecargoApi({
         apiKey,
         method: "POST",
-        path: "/connect/login-link",
-        body: {},
+        path: "/connect",
+        body,
       });
+      if (
+        action === "onboard" &&
+        !result.ok &&
+        (result.status === 403 || result.status === 401)
+      ) {
+        return {
+          content: [
+            {
+              type: "text",
+              text: formatToolResult(result, [
+                `Cannot mint onboarding from this key. Send the human to ${CONNECT_DASHBOARD_FALLBACK} while signed in.`,
+              ]),
+            },
+          ],
+          isError: true,
+        };
+      }
       const extra =
         result.status === 403 || result.status === 401
           ? [
-              `Agent keys cannot open Express. Send the human to ${CONNECT_DASHBOARD_FALLBACK} while signed in.`,
+              `Agent keys cannot manage payouts. Send the human to ${CONNECT_DASHBOARD_FALLBACK} while signed in.`,
             ]
           : undefined;
       return {
@@ -837,7 +817,7 @@ export function createBeecargoMcpServer(
     {
       title: "List owned files",
       description:
-        "List files for the authenticated API key. Set includeFolders true to also return sibling folders. Pass runId to list only files uploaded with that pipeline id (GET /files/run/{runId}).",
+        "List files for the authenticated API key. Set includeFolders true to also return sibling folders. Pass runId to list only files uploaded with that pipeline id (GET /files/list?runId=…).",
       inputSchema: z.object({
         page: z.number().int().min(1).optional().default(1),
         limit: z.number().int().min(1).max(500).optional().default(50),
@@ -861,10 +841,14 @@ export function createBeecargoMcpServer(
       }
       if (runId) {
         const runLimit = Math.min(Math.max(limit, 1), 500);
+        const params = new URLSearchParams({
+          runId,
+          limit: String(runLimit),
+        });
         const result = await callBeecargoApi({
           apiKey,
           method: "GET",
-          path: `/files/run/${encodeURIComponent(runId)}?limit=${runLimit}`,
+          path: `/files/list?${params.toString()}`,
         });
         return {
           content: [{ type: "text", text: formatToolResult(result) }],
