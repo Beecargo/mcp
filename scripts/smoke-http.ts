@@ -81,7 +81,8 @@ async function main(): Promise<void> {
     "beecargo_list_files",
     "beecargo_delete_file",
     "beecargo_update_share_settings",
-    "beecargo_run_artifacts",
+    "beecargo_connect",
+    "beecargo_folders",
     "beecargo_create_checkout",
     "beecargo_purchase_checkout",
     "beecargo_purchase_claim",
@@ -96,6 +97,12 @@ async function main(): Promise<void> {
     "beecargo_remote_upload",
     "beecargo_upload_file",
     "beecargo_multipart_init",
+    "beecargo_connect_status",
+    "beecargo_connect_onboard",
+    "beecargo_connect_login_link",
+    "beecargo_create_folder",
+    "beecargo_list_folders",
+    "beecargo_run_artifacts",
   ];
   for (const name of forbidden) {
     if (listed.tools.some((t) => t.name === name)) {

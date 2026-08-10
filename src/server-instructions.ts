@@ -18,7 +18,7 @@ export function buildServerInstructions(mode: InstructionMode = "stdio"): string
       ? "- HTTP: connect with no headers on https://mcp.beecargo.net/mcp/guest (rate-limited). Optional: x-beecargo-api-key or Authorization: Bearer bc_… for full tools on /mcp."
       : "- Stdio: omit BEECARGO_API_KEY to start anonymous; beecargo_register_agent creates and adopts an API key in-process.",
     "- Anonymous: beecargo_upload (url or small contentBase64) without registering (ephemeral limits; save deletionToken).",
-    "- Owned storage: after register, use beecargo_list_files, folders, and beecargo_claim_file.",
+    "- Owned storage: after register, use beecargo_list_files, beecargo_folders, and beecargo_claim_file.",
     "",
     "Uploads (beecargo_upload):",
     "- url: sync remote fetch (default). Set background: true for large/slow URLs, then beecargo_upload_status.",
@@ -36,7 +36,7 @@ export function buildServerInstructions(mode: InstructionMode = "stdio"): string
     "- Do not send humans to /pricing for this flow. monthly/annual only if they explicitly ask.",
     "",
     "Paid shares (seller payouts):",
-    "- Sellers must connect Stripe before setting a price: beecargo_connect_onboard (dashboard API key or OAuth) → send onboardUrl to the human.",
+    "- Sellers must connect Stripe before setting a price: beecargo_connect action=onboard (dashboard API key or OAuth) → send onboardUrl to the human.",
     "- Agent bootstrap keys cannot open Connect; fall back to https://beecargo.net/dashboard/settings?connect=start.",
     "- When readyToSell, set priceCents (min 100 in the smallest currency unit) and optional currency (usd/eur/aed/brl/jpy/krw/cny/rub; default usd) via beecargo_update_share_settings.",
     "",

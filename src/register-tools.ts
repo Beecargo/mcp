@@ -36,12 +36,8 @@ const TOOL_CATALOG = [
     summary: "Poll async URL upload job started by beecargo_upload",
   },
   {
-    name: "beecargo_create_folder",
-    summary: "Create a folder (API key)",
-  },
-  {
-    name: "beecargo_list_folders",
-    summary: "List folders (API key)",
+    name: "beecargo_folders",
+    summary: "Create or list folders (API key); action create|list",
   },
   {
     name: "beecargo_get_download_url",
@@ -50,29 +46,17 @@ const TOOL_CATALOG = [
   { name: "beecargo_file_info", summary: "Metadata by short codes" },
   {
     name: "beecargo_list_files",
-    summary: "List owned files; includeFolders optional",
+    summary: "List owned files; optional runId, includeFolders",
   },
   {
     name: "beecargo_update_share_settings",
     summary: "Set visibility, price, direct, retention, expiry on owned file",
   },
   {
-    name: "beecargo_connect_status",
-    summary: "Seller payout readiness (Stripe Connect status)",
-  },
-  {
-    name: "beecargo_connect_onboard",
-    summary: "Mint Stripe Connect onboarding URL for the seller",
-  },
-  {
-    name: "beecargo_connect_login_link",
-    summary: "Open Stripe Express dashboard login URL",
+    name: "beecargo_connect",
+    summary: "Seller Stripe Connect; action status|onboard|login",
   },
   { name: "beecargo_delete_file", summary: "Delete by fileId + optional token" },
-  {
-    name: "beecargo_run_artifacts",
-    summary: "List files uploaded under a runId (pipeline manifest)",
-  },
   {
     name: "beecargo_create_upload_delegation",
     summary:
@@ -462,111 +446,92 @@ export function createBeecargoMcpServer(
   );
 
   registerTool(
-    "beecargo_connect_status",
+    "beecargo_connect",
     {
-      title: "Seller payout status",
+      title: "Seller Stripe Connect",
       description:
-        "Check whether the signed-in seller can accept paid-share payments (Stripe Connect). Requires a dashboard API key or OAuth — not an agent bootstrap key. readyToSell must be true before setting priceCents.",
+        "Seller Stripe Connect for paid shares. action=status: check readyToSell. action=onboard: mint Express onboarding URL (send onboardUrl to the human). action=login: mint Express dashboard login URL. Requires a dashboard API key or OAuth — not an agent bootstrap key. readyToSell must be true before setting priceCents.",
       inputSchema: z.object({
-        sync: z.boolean().optional().describe("Sync flags from Stripe (default true)"),
-      }),
-      annotations: { readOnlyHint: true },
-    },
-    async ({ sync }) => {
-      const apiKey = ctx.getApiKey();
-      if (!apiKey) {
-        return missingKeyResult("use a dashboard API key or OAuth (not an agent key)");
-      }
-      const qs = sync === false ? "?sync=0" : sync === true ? "?sync=1" : "";
-      const result = await callBeecargoApi({
-        apiKey,
-        method: "GET",
-        path: `/connect/status${qs}`,
-      });
-      const extra =
-        result.status === 403 || result.status === 401
-          ? [
-              `Agent keys cannot manage payouts. Send the human to ${CONNECT_DASHBOARD_FALLBACK} while signed in.`,
-            ]
-          : undefined;
-      return {
-        content: [{ type: "text", text: formatToolResult(result, extra) }],
-        isError: !result.ok,
-      };
-    },
-  );
-
-  registerTool(
-    "beecargo_connect_onboard",
-    {
-      title: "Connect seller payouts",
-      description:
-        "Create a Stripe Express onboarding link for the seller. Send onboardUrl to the human. Requires a dashboard API key or OAuth — not an agent bootstrap key. After they finish, call beecargo_connect_status until readyToSell, then set priceCents via beecargo_update_share_settings.",
-      inputSchema: z.object({
+        action: z
+          .enum(["status", "onboard", "login"])
+          .describe("status | onboard | login"),
+        sync: z
+          .boolean()
+          .optional()
+          .describe("status only: sync flags from Stripe (default true)"),
         country: z
           .string()
           .length(2)
           .optional()
-          .describe("ISO country for new Express accounts (default US)"),
+          .describe("onboard only: ISO country for new Express accounts (default US)"),
       }),
       annotations: { readOnlyHint: false },
     },
-    async ({ country }) => {
+    async ({ action, sync, country }) => {
       const apiKey = ctx.getApiKey();
       if (!apiKey) {
-        return {
-          content: [
-            {
-              type: "text",
-              text: [
-                "Missing dashboard API key or OAuth for seller payouts.",
-                `Send the human to ${CONNECT_DASHBOARD_FALLBACK} while signed in.`,
-              ].join("\n"),
-            },
-          ],
-          isError: true,
-        };
-      }
-      const result = await callBeecargoApi({
-        apiKey,
-        method: "POST",
-        path: "/connect/onboard",
-        body: country ? { country } : {},
-      });
-      if (!result.ok && (result.status === 403 || result.status === 401)) {
-        return {
-          content: [
-            {
-              type: "text",
-              text: formatToolResult(result, [
-                `Cannot mint onboarding from this key. Send the human to ${CONNECT_DASHBOARD_FALLBACK} while signed in.`,
-              ]),
-            },
-          ],
-          isError: true,
-        };
-      }
-      return {
-        content: [{ type: "text", text: formatToolResult(result) }],
-        isError: !result.ok,
-      };
-    },
-  );
-
-  registerTool(
-    "beecargo_connect_login_link",
-    {
-      title: "Open Stripe Express dashboard",
-      description:
-        "Mint a short-lived Stripe Express login URL so the seller can see payouts and bank details. Requires Connect already started and a dashboard API key or OAuth.",
-      inputSchema: z.object({}),
-      annotations: { readOnlyHint: true },
-    },
-    async () => {
-      const apiKey = ctx.getApiKey();
-      if (!apiKey) {
+        if (action === "onboard") {
+          return {
+            content: [
+              {
+                type: "text",
+                text: [
+                  "Missing dashboard API key or OAuth for seller payouts.",
+                  `Send the human to ${CONNECT_DASHBOARD_FALLBACK} while signed in.`,
+                ].join("\n"),
+              },
+            ],
+            isError: true,
+          };
+        }
         return missingKeyResult("use a dashboard API key or OAuth (not an agent key)");
       }
+
+      if (action === "status") {
+        const qs = sync === false ? "?sync=0" : sync === true ? "?sync=1" : "";
+        const result = await callBeecargoApi({
+          apiKey,
+          method: "GET",
+          path: `/connect/status${qs}`,
+        });
+        const extra =
+          result.status === 403 || result.status === 401
+            ? [
+                `Agent keys cannot manage payouts. Send the human to ${CONNECT_DASHBOARD_FALLBACK} while signed in.`,
+              ]
+            : undefined;
+        return {
+          content: [{ type: "text", text: formatToolResult(result, extra) }],
+          isError: !result.ok,
+        };
+      }
+
+      if (action === "onboard") {
+        const result = await callBeecargoApi({
+          apiKey,
+          method: "POST",
+          path: "/connect/onboard",
+          body: country ? { country } : {},
+        });
+        if (!result.ok && (result.status === 403 || result.status === 401)) {
+          return {
+            content: [
+              {
+                type: "text",
+                text: formatToolResult(result, [
+                  `Cannot mint onboarding from this key. Send the human to ${CONNECT_DASHBOARD_FALLBACK} while signed in.`,
+                ]),
+              },
+            ],
+            isError: true,
+          };
+        }
+        return {
+          content: [{ type: "text", text: formatToolResult(result) }],
+          isError: !result.ok,
+        };
+      }
+
       const result = await callBeecargoApi({
         apiKey,
         method: "POST",
@@ -591,7 +556,7 @@ export function createBeecargoMcpServer(
     {
       title: "Update share settings",
       description:
-        "Change visibility, one-time price (priceCents), direct download, retention, or unlock protection on an owned file or growable Shipment. Pass fileId and/or shortId (bundle shareShortId from openShare). Setting a price requires seller Connect readyToSell (beecargo_connect_onboard first). Requires API key.",
+        "Change visibility, one-time price (priceCents), direct download, retention, or unlock protection on an owned file or growable Shipment. Pass fileId and/or shortId (bundle shareShortId from openShare). Setting a price requires seller Connect readyToSell (beecargo_connect action=onboard first). Requires API key.",
       inputSchema: z.object({
         fileId: FILE_ID.optional(),
         shortId: z
@@ -703,7 +668,7 @@ export function createBeecargoMcpServer(
         result.body &&
         JSON.stringify(result.body).includes("Connect Stripe")
           ? [
-              "Seller is not ready to sell. Call beecargo_connect_onboard and send onboardUrl to the human, or send them to " +
+              "Seller is not ready to sell. Call beecargo_connect with action=onboard and send onboardUrl to the human, or send them to " +
                 CONNECT_DASHBOARD_FALLBACK +
                 ".",
             ]
@@ -716,48 +681,58 @@ export function createBeecargoMcpServer(
   );
 
   registerTool(
-    "beecargo_create_folder",
+    "beecargo_folders",
     {
-      title: "Create folder",
-      description: "Create a folder under the authenticated API key.",
+      title: "Folders",
+      description:
+        "Create or list folders under the authenticated API key. action=create requires name (optional parentId). action=list supports parentId, page, limit, search.",
       inputSchema: z.object({
-        name: z.string().min(1).max(200),
-        parentId: z.string().uuid().optional().nullable(),
+        action: z.enum(["create", "list"]).describe("create | list"),
+        name: z
+          .string()
+          .min(1)
+          .max(200)
+          .optional()
+          .describe("create only: folder name"),
+        parentId: z
+          .string()
+          .optional()
+          .nullable()
+          .describe("create: parent UUID or null for root; list: filter children"),
+        page: z.number().int().min(1).optional().default(1),
+        limit: z.number().int().min(1).max(200).optional().default(50),
+        search: z.string().optional().describe("list only: folder name search"),
       }),
       annotations: { readOnlyHint: false },
     },
-    async ({ name, parentId }) => {
+    async ({ action, name, parentId, page, limit, search }) => {
       const apiKey = ctx.getApiKey();
       if (!apiKey) return missingKeyResult();
-      const result = await callBeecargoApi({
-        apiKey,
-        method: "POST",
-        path: "/folders",
-        body: { name, parentId: parentId ?? null },
-      });
-      return {
-        content: [{ type: "text", text: formatToolResult(result) }],
-        isError: !result.ok,
-      };
-    },
-  );
 
-  registerTool(
-    "beecargo_list_folders",
-    {
-      title: "List folders",
-      description: "List folders for the authenticated API key.",
-      inputSchema: z.object({
-        parentId: z.string().optional(),
-        page: z.number().int().min(1).optional().default(1),
-        limit: z.number().int().min(1).max(200).optional().default(50),
-        search: z.string().optional(),
-      }),
-      annotations: { readOnlyHint: true },
-    },
-    async ({ parentId, page, limit, search }) => {
-      const apiKey = ctx.getApiKey();
-      if (!apiKey) return missingKeyResult();
+      if (action === "create") {
+        if (!name) {
+          return {
+            content: [
+              {
+                type: "text",
+                text: "action=create requires name.",
+              },
+            ],
+            isError: true,
+          };
+        }
+        const result = await callBeecargoApi({
+          apiKey,
+          method: "POST",
+          path: "/folders",
+          body: { name, parentId: parentId ?? null },
+        });
+        return {
+          content: [{ type: "text", text: formatToolResult(result) }],
+          isError: !result.ok,
+        };
+      }
+
       const params = new URLSearchParams({
         page: String(page),
         limit: String(limit),
@@ -862,23 +837,44 @@ export function createBeecargoMcpServer(
     {
       title: "List owned files",
       description:
-        "List files for the authenticated API key. Set includeFolders true to also return sibling folders.",
+        "List files for the authenticated API key. Set includeFolders true to also return sibling folders. Pass runId to list only files uploaded with that pipeline id (GET /files/run/{runId}).",
       inputSchema: z.object({
         page: z.number().int().min(1).optional().default(1),
-        limit: z.number().int().min(1).max(200).optional().default(50),
+        limit: z.number().int().min(1).max(500).optional().default(50),
         folderId: z.string().optional(),
         includeFolders: z.boolean().optional().default(true),
+        runId: z
+          .string()
+          .min(1)
+          .max(120)
+          .optional()
+          .describe(
+            "When set, list files uploaded with this runId (ignores folderId/includeFolders/page)",
+          ),
       }),
       annotations: { readOnlyHint: true },
     },
-    async ({ page, limit, folderId, includeFolders }) => {
+    async ({ page, limit, folderId, includeFolders, runId }) => {
       const apiKey = ctx.getApiKey();
       if (!apiKey) {
         return missingKeyResult("set BEECARGO_API_KEY or x-beecargo-api-key for list");
       }
+      if (runId) {
+        const runLimit = Math.min(Math.max(limit, 1), 500);
+        const result = await callBeecargoApi({
+          apiKey,
+          method: "GET",
+          path: `/files/run/${encodeURIComponent(runId)}?limit=${runLimit}`,
+        });
+        return {
+          content: [{ type: "text", text: formatToolResult(result) }],
+          isError: !result.ok,
+        };
+      }
+      const listLimit = Math.min(limit, 200);
       const params = new URLSearchParams({
         page: String(page),
-        limit: String(limit),
+        limit: String(listLimit),
         includeFolders: includeFolders ? "true" : "false",
       });
       if (folderId) params.set("folderId", folderId);
@@ -886,32 +882,6 @@ export function createBeecargoMcpServer(
         apiKey,
         method: "GET",
         path: `/files/list?${params.toString()}`,
-      });
-      return {
-        content: [{ type: "text", text: formatToolResult(result) }],
-        isError: !result.ok,
-      };
-    },
-  );
-
-  registerTool(
-    "beecargo_run_artifacts",
-    {
-      title: "Run artifacts manifest",
-      description: "List files uploaded with the same runId on your account.",
-      inputSchema: z.object({
-        runId: z.string().min(1).max(120),
-        limit: z.number().int().min(1).max(500).optional().default(100),
-      }),
-      annotations: { readOnlyHint: true },
-    },
-    async ({ runId, limit }) => {
-      const apiKey = ctx.getApiKey();
-      if (!apiKey) return missingKeyResult();
-      const result = await callBeecargoApi({
-        apiKey,
-        method: "GET",
-        path: `/files/run/${encodeURIComponent(runId)}?limit=${limit}`,
       });
       return {
         content: [{ type: "text", text: formatToolResult(result) }],

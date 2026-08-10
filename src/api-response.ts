@@ -255,7 +255,7 @@ export function connectLinkLinesFromPayload(body: unknown): string[] | null {
       `Send this Stripe link to the human to connect payouts.`,
       ready
         ? "Seller is already readyToSell — they can set priceCents on a share."
-        : "After they finish, call beecargo_connect_status until readyToSell, then set priceCents via beecargo_update_share_settings.",
+        : "After they finish, call beecargo_connect with action=status until readyToSell, then set priceCents via beecargo_update_share_settings.",
     ];
   }
   const loginUrl = data.loginUrl;
