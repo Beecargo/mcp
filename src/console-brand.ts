@@ -39,7 +39,7 @@ const TAGLINES = [
 ] as const;
 
 const LINKS = [
-  { label: "Docs", url: "https://beecargo.net/docs/mcp/overview" },
+  { label: "Documentation", url: "https://beecargo.net/docs/mcp/overview" },
   { label: "endpoint", url: "https://mcp.beecargo.net/mcp" },
   { label: "guest", url: "https://mcp.beecargo.net/mcp/guest" },
   { label: "connect", url: "https://beecargo.net/connect/mcp" },
