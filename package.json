@@ -2,6 +2,7 @@
   "name": "@beecargo/mcp",
   "version": "0.1.0",
   "private": false,
+  "mcpName": "io.github.Beecargo/mcp",
   "description": "Model Context Protocol server for the Beecargo file hosting API",
   "type": "module",
   "bin": {
@@ -10,7 +11,8 @@
   },
   "files": [
     "dist",
-    "examples"
+    "examples",
+    "server.json"
   ],
   "publishConfig": {
     "access": "public"

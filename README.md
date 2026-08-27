@@ -69,6 +69,12 @@ Env: see [`.env.example`](.env.example). Highlights:
 - `BEECARGO_MCP_BEARER_TOKEN`: optional shared transport secret when `REQUIRE_AUTH=true`
 - `BEECARGO_MERCHANT_OAUTH_ENABLED`: publish OAuth resource metadata and enable Connect with Beecargo (requires matching `INTERNAL_API_KEY` on API + MCP)
 
+## Official MCP Registry
+
+`server.json` is the Official MCP Registry manifest for `io.github.Beecargo/mcp` (schema 2025-12-11). The hosted remote is `https://mcp.beecargo.net/mcp`. Discovery copies also live at `/.well-known/mcp/server.json` on this host and on https://beecargo.net.
+
+This file does not mean the server is already listed in the registry.
+
 ## CLI (local scripts)
 
 Use the dedicated package [`@beecargo/cli`](../cli/README.md):

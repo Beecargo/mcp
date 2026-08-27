@@ -36,6 +36,12 @@ import { buildProtectedResourceMetadata } from "./oauth-metadata.js";
 import { introspectOAuthAccessToken } from "./oauth-introspect.js";
 import { merchantOAuthEnabled } from "./env-config.js";
 import { McpSessionRegistry } from "./session-registry.js";
+import {
+  buildMcpLlmsTxt,
+  buildMcpRobotsTxt,
+  buildMcpServerCard,
+  buildOfficialMcpServerJson,
+} from "./registry-manifest.js";
 
 type RateBucket = { count: number; windowStart: number };
 
@@ -81,28 +87,78 @@ function clientIp(req: Request): string {
   return normalizeIp(req.socket.remoteAddress ?? "") ?? "unknown";
 }
 
+type RateLimitDecision =
+  | {
+      ok: true;
+      limit: number;
+      remaining: number;
+      resetAt: number;
+    }
+  | {
+      ok: false;
+      limit: number;
+      remaining: 0;
+      resetAt: number;
+      retryAfterSec: number;
+    };
+
+function applyMcpRateLimitHeaders(
+  res: Response,
+  decision: RateLimitDecision,
+): void {
+  const resetDelaySec = Math.max(
+    0,
+    Math.ceil((decision.resetAt - Date.now()) / 1000),
+  );
+  res.setHeader("X-RateLimit-Limit", String(decision.limit));
+  res.setHeader("X-RateLimit-Remaining", String(decision.remaining));
+  res.setHeader(
+    "X-RateLimit-Reset",
+    String(Math.floor(decision.resetAt / 1000)),
+  );
+  res.setHeader("RateLimit-Limit", String(decision.limit));
+  res.setHeader("RateLimit-Remaining", String(decision.remaining));
+  res.setHeader("RateLimit-Reset", String(resetDelaySec));
+  res.setHeader("RateLimit-Policy", `${decision.limit};w=60`);
+  res.setHeader(
+    "RateLimit",
+    `default;q=${decision.limit};r=${decision.remaining};t=${resetDelaySec}`,
+  );
+}
+
 function checkMcpRateLimit(
   buckets: Map<string, RateBucket>,
   ip: string,
-): { ok: true } | { ok: false; retryAfterSec: number } {
+): RateLimitDecision {
   const rpm = mcpRateLimitRpm();
-  if (rpm <= 0) return { ok: true };
   const now = Date.now();
   const windowMs = 60_000;
+  if (rpm <= 0) {
+    return { ok: true, limit: 0, remaining: 0, resetAt: now + windowMs };
+  }
   let b = buckets.get(ip);
   if (!b || now - b.windowStart >= windowMs) {
     b = { count: 0, windowStart: now };
     buckets.set(ip, b);
   }
   b.count += 1;
+  const resetAt = b.windowStart + windowMs;
   if (b.count > rpm) {
-    const retryAfterSec = Math.max(
-      1,
-      Math.ceil((windowMs - (now - b.windowStart)) / 1000),
-    );
-    return { ok: false, retryAfterSec };
+    const retryAfterSec = Math.max(1, Math.ceil((resetAt - now) / 1000));
+    return {
+      ok: false,
+      limit: rpm,
+      remaining: 0,
+      resetAt,
+      retryAfterSec,
+    };
   }
-  return { ok: true };
+  return {
+    ok: true,
+    limit: rpm,
+    remaining: Math.max(0, rpm - b.count),
+    resetAt,
+  };
 }
 
 async function resolveRequestApiKey(req: Request): Promise<string | null> {
@@ -246,6 +302,9 @@ export function createHttpApplication(): Express {
 
   function rateLimitMiddleware(req: Request, res: Response, next: NextFunction): void {
     const rl = checkMcpRateLimit(rateBuckets, clientIp(req));
+    if (rl.limit > 0) {
+      applyMcpRateLimitHeaders(res, rl);
+    }
     if (rl.ok) {
       next();
       return;
@@ -259,8 +318,46 @@ export function createHttpApplication(): Express {
     });
   }
 
+  function sendDiscoveryJson(res: Response, body: unknown): void {
+    res.setHeader("Content-Type", "application/json; charset=utf-8");
+    res.setHeader("Cache-Control", "public, max-age=86400, s-maxage=86400");
+    res.setHeader("Access-Control-Allow-Origin", "*");
+    res.status(200).json(body);
+  }
+
+  function sendDiscoveryText(
+    res: Response,
+    body: string,
+    contentType: string,
+  ): void {
+    res.setHeader("Content-Type", contentType);
+    res.setHeader("Cache-Control", "public, max-age=86400, s-maxage=86400");
+    res.setHeader("Access-Control-Allow-Origin", "*");
+    res.status(200).send(body);
+  }
+
   app.get("/", (_req, res) => {
     sendMcpBrandPage(res);
+  });
+
+  app.get("/robots.txt", (_req, res) => {
+    sendDiscoveryText(res, buildMcpRobotsTxt(), "text/plain; charset=utf-8");
+  });
+
+  app.get("/llms.txt", (_req, res) => {
+    sendDiscoveryText(res, buildMcpLlmsTxt(), "text/plain; charset=utf-8");
+  });
+
+  app.get("/.well-known/mcp", (_req, res) => {
+    sendDiscoveryJson(res, buildMcpServerCard());
+  });
+
+  app.get("/.well-known/mcp/server-card.json", (_req, res) => {
+    sendDiscoveryJson(res, buildMcpServerCard());
+  });
+
+  app.get("/.well-known/mcp/server.json", (_req, res) => {
+    sendDiscoveryJson(res, buildOfficialMcpServerJson());
   });
 
   app.get("/health", (_req, res) => {
