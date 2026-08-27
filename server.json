@@ -1,0 +1,26 @@
+{
+  "$schema": "https://static.modelcontextprotocol.io/schemas/2025-12-11/server.schema.json",
+  "name": "io.github.Beecargo/mcp",
+  "title": "Beecargo",
+  "description": "Publish a file from an agent and get a durable beecargo.net/d/{shortId} share link.",
+  "version": "0.1.0",
+  "websiteUrl": "https://beecargo.net",
+  "repository": {
+    "url": "https://github.com/Beecargo/mcp",
+    "source": "github",
+    "id": "1328145311"
+  },
+  "icons": [
+    {
+      "src": "https://beecargo.net/logo.png",
+      "mimeType": "image/png",
+      "sizes": ["1112x1112"]
+    }
+  ],
+  "remotes": [
+    {
+      "type": "streamable-http",
+      "url": "https://mcp.beecargo.net/mcp"
+    }
+  ]
+}

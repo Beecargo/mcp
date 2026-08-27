@@ -37,6 +37,35 @@ async function main(): Promise<void> {
     }
   }
 
+  const robots = await fetch(`${origin}/robots.txt`);
+  if (!robots.ok || !(await robots.text()).includes("ora-agent")) {
+    throw new Error("smoke: GET /robots.txt missing ora-agent allow rule");
+  }
+
+  const serverJson = await fetch(`${origin}/.well-known/mcp/server.json`);
+  if (!serverJson.ok) {
+    throw new Error(`smoke: GET /.well-known/mcp/server.json expected 200, got ${serverJson.status}`);
+  }
+  const registry = (await serverJson.json()) as {
+    name?: string;
+    description?: string;
+    remotes?: { url?: string }[];
+  };
+  if (registry.name !== "io.github.Beecargo/mcp") {
+    throw new Error("smoke: server.json name mismatch");
+  }
+  if (!registry.description || registry.description.length > 100) {
+    throw new Error("smoke: server.json description must be 1..100 chars");
+  }
+  if (registry.remotes?.[0]?.url !== "https://mcp.beecargo.net/mcp") {
+    throw new Error("smoke: server.json remote URL mismatch");
+  }
+
+  const serverCard = await fetch(`${origin}/.well-known/mcp/server-card.json`);
+  if (!serverCard.ok) {
+    throw new Error(`smoke: GET /.well-known/mcp/server-card.json expected 200, got ${serverCard.status}`);
+  }
+
   for (const path of ["/", "/mcp", "/mcp/guest"]) {
     const brand = await fetch(`${origin}${path}`, {
       headers: { Accept: "text/html,application/xhtml+xml" },
