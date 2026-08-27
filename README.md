@@ -105,3 +105,11 @@ BEECARGO_API_URL=http://localhost:3001 pnpm smoke:api   # live upload against AP
 | `/health`, `/ready`       | Same                                                 |
 | Retries + timeout on REST | `BEECARGO_API_FETCH_*` env                           |
 | Tool results              | `{ ok, status, body }` + share link hints            |
+
+## Publish
+
+Scope is `@beecargo`. First publish is manual with `--otp`. After that, set Trusted Publisher on the npm package to GitHub `Beecargo/mcp` workflow `publish.yml`. Then bump the patch in `package.json` and push `main`.
+
+```bash
+pnpm typecheck && pnpm publish --access public --otp=XXXXXX
+```
