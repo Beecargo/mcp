@@ -44,7 +44,9 @@ async function main(): Promise<void> {
 
   const serverJson = await fetch(`${origin}/.well-known/mcp/server.json`);
   if (!serverJson.ok) {
-    throw new Error(`smoke: GET /.well-known/mcp/server.json expected 200, got ${serverJson.status}`);
+    throw new Error(
+      `smoke: GET /.well-known/mcp/server.json expected 200, got ${serverJson.status}`,
+    );
   }
   const registry = (await serverJson.json()) as {
     name?: string;
@@ -63,7 +65,9 @@ async function main(): Promise<void> {
 
   const serverCard = await fetch(`${origin}/.well-known/mcp/server-card.json`);
   if (!serverCard.ok) {
-    throw new Error(`smoke: GET /.well-known/mcp/server-card.json expected 200, got ${serverCard.status}`);
+    throw new Error(
+      `smoke: GET /.well-known/mcp/server-card.json expected 200, got ${serverCard.status}`,
+    );
   }
 
   for (const path of ["/", "/mcp", "/mcp/guest"]) {

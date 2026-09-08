@@ -41,8 +41,7 @@ const offMeta = buildProtectedResourceMetadata() as {
   authorization_servers?: string[];
 };
 assert(
-  !("authorization_servers" in offMeta) ||
-    offMeta.authorization_servers === undefined,
+  !("authorization_servers" in offMeta) || offMeta.authorization_servers === undefined,
   "disabled OAuth must not advertise an empty authorization_servers list",
 );
 process.env.BEECARGO_MERCHANT_OAUTH_ENABLED = "true";

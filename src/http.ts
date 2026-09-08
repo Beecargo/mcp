@@ -102,20 +102,11 @@ type RateLimitDecision =
       retryAfterSec: number;
     };
 
-function applyMcpRateLimitHeaders(
-  res: Response,
-  decision: RateLimitDecision,
-): void {
-  const resetDelaySec = Math.max(
-    0,
-    Math.ceil((decision.resetAt - Date.now()) / 1000),
-  );
+function applyMcpRateLimitHeaders(res: Response, decision: RateLimitDecision): void {
+  const resetDelaySec = Math.max(0, Math.ceil((decision.resetAt - Date.now()) / 1000));
   res.setHeader("X-RateLimit-Limit", String(decision.limit));
   res.setHeader("X-RateLimit-Remaining", String(decision.remaining));
-  res.setHeader(
-    "X-RateLimit-Reset",
-    String(Math.floor(decision.resetAt / 1000)),
-  );
+  res.setHeader("X-RateLimit-Reset", String(Math.floor(decision.resetAt / 1000)));
   res.setHeader("RateLimit-Limit", String(decision.limit));
   res.setHeader("RateLimit-Remaining", String(decision.remaining));
   res.setHeader("RateLimit-Reset", String(resetDelaySec));
@@ -325,11 +316,7 @@ export function createHttpApplication(): Express {
     res.status(200).json(body);
   }
 
-  function sendDiscoveryText(
-    res: Response,
-    body: string,
-    contentType: string,
-  ): void {
+  function sendDiscoveryText(res: Response, body: string, contentType: string): void {
     res.setHeader("Content-Type", contentType);
     res.setHeader("Cache-Control", "public, max-age=86400, s-maxage=86400");
     res.setHeader("Access-Control-Allow-Origin", "*");
