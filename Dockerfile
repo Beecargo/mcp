@@ -7,7 +7,7 @@ COPY package.json tsconfig.json ./
 RUN pnpm install --no-frozen-lockfile --ignore-scripts
 COPY src ./src
 RUN pnpm build \
-  && pnpm prune --prod
+  && pnpm prune --prod --ignore-scripts
 
 FROM node:22-alpine
 WORKDIR /app
