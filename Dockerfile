@@ -3,9 +3,8 @@
 FROM node:22-alpine AS build
 WORKDIR /app
 RUN corepack enable && corepack prepare pnpm@9.15.9 --activate
-COPY package.json ./
-RUN pnpm install --no-frozen-lockfile
-COPY tsconfig.json ./
+COPY package.json tsconfig.json ./
+RUN pnpm install --no-frozen-lockfile --ignore-scripts
 COPY src ./src
 RUN pnpm build \
   && pnpm prune --prod
